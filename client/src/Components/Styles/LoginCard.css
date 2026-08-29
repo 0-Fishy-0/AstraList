@@ -1,0 +1,77 @@
+@import '../../tokens.css';
+
+.card-container {
+    appearance: none;
+    cursor: pointer;
+    font: inherit;
+    width: 100%;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    padding: 12px;
+    background: linear-gradient(
+        90deg, 
+        color-mix(in srgb, var(--bg-surface) 45%, transparent) ,
+        color-mix(in srgb, var(--bg-surface-2)45%, transparent)
+    );
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    gap: 16px;
+    transform: translateX(0);
+    transition: all 200ms ease;
+}
+.card-container:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+.card-container:not(:disabled):hover, 
+.card-container:not(:disabled):focus-visible {
+    border-color: var(--accent-pink);
+    transform: translateX(5px);
+}
+.card-container:not(:disabled):focus-visible {
+    outline: 2px solid var(--accent-pink);
+    border: none;
+}
+.left {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    align-items: start;
+    justify-content: center;
+}
+.title {
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    text-align: start;
+}
+.subtitle {
+    color: var(--text-secondary);
+    font-size: 0.75rem;
+    text-align: start;
+}
+.right {
+    display: inline-flex;
+    align-items: center;
+    justify-content: end;
+    color: var(--accent-pink);
+    gap: 4px;
+}
+.connect {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+}
+.arrow {
+    --radius: 20px;
+    width: var(--radius);
+    height: var(--radius);
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 1px solid color-mix(in srgb, var(--accent-pink) 40%, transparent );
+    font-size: 0.75rem;
+}
+.card-container:disabled .connect,
+.card-container:disabled .arrow{
+    display: none;
+}

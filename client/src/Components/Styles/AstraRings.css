@@ -1,0 +1,192 @@
+@import "../../tokens.css";
+
+.astra-rings {
+  position: relative;
+
+  width: min(45vw, 560px);
+  aspect-ratio: 1;
+
+  perspective: 1000px;
+  perspective-origin: 50% 50%;
+  transition: opacity 200ms ease;
+  /*
+    Don't let the motif itself intercept clicks.
+    Mouse position is being read from window anyway.
+  */
+  pointer-events: none;
+}
+.astra-rings.backgrounded {
+  opacity: 0.5;
+}
+
+.astra-rings__system {
+  position: absolute;
+  inset: 0;
+
+  transform-style: preserve-3d;
+
+  /*
+    Shared default plane for all three rings.
+  */
+  transform:
+    rotateX(64deg)
+    rotateZ(-10deg);
+}
+
+.astra-rings__layer {
+  position: absolute;
+  inset: 0;
+
+  display: grid;
+  place-items: center;
+
+  transform-style: preserve-3d;
+  transform-origin: 50% 50%;
+
+
+  will-change: transform;
+}
+
+.astra-rings__ring {
+  position: absolute;
+
+  border-radius: 50%;
+
+  border: 1.3px solid rgba(237, 232, 245, 0.13);
+
+  backface-visibility: visible;
+  transform-style: preserve-3d;
+
+  will-change: filter;
+}
+
+.astra-rings__ring::after {
+  content: "";
+
+  position: absolute;
+  inset: -1px;
+
+  border-radius: inherit;
+
+  border: 2.3px solid transparent;
+
+  filter:
+    drop-shadow(
+      0 0 9px
+      rgba(168, 124, 240, 0.3)
+    );
+}
+
+
+/* ---------- OUTER ---------- */
+
+.astra-rings__ring--outer {
+  width: 88%;
+  height: 88%;
+  transition: scale 200ms ease;
+}
+.astra-rings__ring--outer.backgrounded {
+  scale: 0.9;
+}
+
+.astra-rings__ring--outer::after {
+  border-top-color: var(--accent-pink);
+  border-right-color: rgba(230, 122, 184, 0.38);
+  
+  transform: rotate(25deg);
+}
+
+
+/* ---------- MIDDLE ---------- */
+
+.astra-rings__ring--middle {
+  width: 67%;
+  height: 67%;
+  transition: scale 200ms ease;
+}
+.astra-rings__ring--middle.backgrounded {
+  scale: 0.9; 
+}
+
+.astra-rings__ring--middle::after {
+  border-top-color: var(--accent);
+  border-right-color: rgba(168, 124, 240, 0.42);
+  
+  transform: rotate(-75deg);
+}
+
+
+/* ---------- INNER ---------- */
+
+.astra-rings__ring--inner {
+  width: 46%;
+  height: 46%;
+  transition: scale 200ms ease;
+}
+.astra-rings__ring--inner.backgrounded {
+  scale: 0.9;
+}
+
+.astra-rings__ring--inner::after {
+  border-top-color: var(--accent-pink);
+  border-right-color: rgba(230, 122, 184, 0.3);
+
+  transform: rotate(145deg);
+}
+
+
+/* ---------- CORE ---------- */
+
+.astra-rings__core {
+  position: absolute;
+
+  left: 50%;
+  top: 50%;
+
+  width: 13px;
+  height: 13px;
+
+  margin: -6.5px;
+
+  border-radius: 50%;
+
+  /*
+    Counteracts the system plane so the core
+    remains visually circular.
+  */
+  transform:
+    translateZ(6px)
+    rotateZ(10deg)
+    rotateX(-64deg);
+
+  background: var(--accent-pink);
+
+  box-shadow:
+    0 0 12px rgba(230, 122, 184, 0.95),
+    0 0 30px rgba(230, 122, 184, 0.55),
+    0 0 65px rgba(230, 122, 184, 0.22);
+
+  will-change:
+    transform,
+    box-shadow;
+}
+
+.astra-rings__core::before {
+  content: "";
+
+  position: absolute;
+  inset: -11px;
+
+  border-radius: 50%;
+
+  border:
+    1px solid
+    rgba(230, 122, 184, 0.11);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .astra-rings__layer {
+    transform: none !important;
+  }
+}

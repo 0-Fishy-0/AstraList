@@ -1,0 +1,44 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght,SOFT@0,9..144,100..900,0..100;1,9..144,100..900,0..100&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;1,100;1,200;1,300;1,400;1,500;1,600;1,700&display=swap');
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: "Manrope", sans-serif;
+    font-weight: 500;
+}
+::selection {
+    background-color: var(--accent);
+    color: var(--text-primary);
+}
+
+[data-theme="light"] {
+    --bg-base: #F3F1F7;
+    --bg-surface: #FFFFFF;
+    --bg-surface-2: #EAE6F2;
+    --border: #DCD4E8;
+    --text-primary: #221D2E;
+    --text-secondary: #5D5470;
+    --text-muted: #8D839E;
+    --accent: #8A4FD1;
+    --accent-hover: #7238B8;
+    --accent-pink: #D6559E;
+}
+
+[data-theme="dark"] {
+    --bg-base: #14101C;
+    --bg-surface: #1E1729;
+    --bg-surface-2: #281E36;
+    --border: #4b3a5f;
+    --text-primary: #EDE8F5;
+    --text-secondary: #B0A3C4;
+    --text-muted: #7A6D91;
+    --accent: #A87CF0;
+    --accent-hover: #BB95F5;
+    --accent-pink: #E67AB8;
+}
+
+html {
+    background-color: var(--bg-base);
+}
