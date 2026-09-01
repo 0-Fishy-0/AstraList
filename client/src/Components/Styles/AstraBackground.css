@@ -1,0 +1,232 @@
+@import "../../tokens.css";
+
+.astra-background {
+    position: absolute;
+    inset: 0;
+
+    overflow: hidden;
+    pointer-events: none;
+
+    z-index: 0;
+    /*
+     * Static foundation.
+     * Cheap and always present.
+     */
+    background:
+        linear-gradient(
+            145deg,
+            var(--bg-base) 0%,
+            var(--bg-base) 20%,
+            var(--bg-surface-2) 45%,
+            color-mix(
+                in srgb,
+                var(--accent-pink) 16%,
+                var(--bg-surface-2)
+            ) 100%
+        );
+    --detail-rings-1:
+        repeating-radial-gradient(
+                ellipse at 72% 58%,
+                transparent 0 48px,
+                rgba(237, 232, 245, 0.055) 49px,
+                transparent 50px 94px
+            );
+    --detail-rings-2:
+        repeating-radial-gradient(
+            ellipse at 18% 110%,
+            transparent 0 72px,
+            rgba(230, 122, 184, 0.035) 73px,
+            transparent 74px 138px
+        );
+    --detail-lines-1:
+        repeating-linear-gradient(
+                145deg,
+                transparent 0 125px,
+                rgba(168, 124, 240, 0.04) 126px,
+                transparent 127px 205px
+            );
+}
+
+.astra-background.no-details {
+    --detail-rings-1: none;
+    --detail-rings-2: none;
+    --detail-lines-1: none;
+}
+/* ============================================================
+   MOVING LIGHTING
+   ============================================================ */
+
+.astra-background::before {
+    content: "";
+
+    position: absolute;
+
+    /*
+     * Slight overscan so the movement/scale never reveals edges.
+     */
+    inset: -8%;
+
+    background:
+
+        /* darker upper-left mass */
+        radial-gradient(
+            ellipse 50% 55% at 0% 0%,
+            color-mix(
+                in srgb,
+                var(--bg-base) 95%,
+                transparent
+            ) 0%,
+
+            color-mix(
+                in srgb,
+                var(--bg-base) 55%,
+                transparent
+            ) 45%,
+
+            transparent 75%
+        ),
+
+        /* primary purple body */
+        radial-gradient(
+            ellipse 52% 68% at 32% 34%,
+            color-mix(
+                in srgb,
+                var(--accent) 26%,
+                transparent
+            ) 0%,
+
+            color-mix(
+                in srgb,
+                var(--bg-surface-2) 30%,
+                transparent
+            ) 46%,
+
+            transparent 76%
+        ),
+
+        /* secondary purple highlight */
+        radial-gradient(
+            ellipse 38% 48% at 74% 54%,
+            color-mix(
+                in srgb,
+                var(--accent-hover) 16%,
+                transparent
+            ) 0%,
+
+            transparent 70%
+        ),
+
+        /* pink lower-right glow */
+        radial-gradient(
+            ellipse 52% 65% at 100% 105%,
+            color-mix(
+                in srgb,
+                var(--accent-pink) 24%,
+                transparent
+            ) 0%,
+
+            color-mix(
+                in srgb,
+                var(--bg-surface-2) 24%,
+                transparent
+            ) 50%,
+
+            transparent 80%
+        );
+
+    animation:
+        background-drift 8s ease-in-out infinite alternate;
+
+    will-change: transform;
+}
+
+
+/* ============================================================
+   STATIC DETAIL + VIGNETTE
+   ============================================================ */
+
+.astra-background::after {
+    content: "";
+
+    position: absolute;
+    inset: -8%;
+
+    /*
+     * Your original repeating detail pattern is preserved here,
+     * because that was already doing a good job of breaking up
+     * the smoothness.
+     */
+    background:
+
+        var(--detail-rings-1),
+        var(--detail-rings-2),
+
+        var(--detail-lines-1),
+
+        /*
+         * Soft vignette.
+         * Last background layer sits underneath the patterns.
+         */
+        radial-gradient(
+            ellipse at center,
+            transparent 42%,
+            color-mix(
+                in srgb,
+                var(--bg-base) 42%,
+                transparent
+            ) 100%
+        );
+
+    opacity: 0.65;
+
+    transform:
+        rotate(-3deg)
+        scale(1.08);
+
+    mask-image:
+        radial-gradient(
+            ellipse at 65% 55%,
+            black 0%,
+            rgba(0, 0, 0, 0.9) 55%,
+            transparent 100%
+        );
+
+    -webkit-mask-image:
+        radial-gradient(
+            ellipse at 65% 55%,
+            black 0%,
+            rgba(0, 0, 0, 0.9) 55%,
+            transparent 100%
+        );
+}
+
+
+/* ============================================================
+   MOTION
+   ============================================================ */
+
+@keyframes background-drift {
+    from {
+        transform:
+            translate3d(-10px, -5px, 0)
+            scale(1);
+    }
+
+    to {
+        transform:
+            translate3d(10px, 5px, 0)
+            scale(1.05);
+    }
+}
+
+
+/* ============================================================
+   ACCESSIBILITY
+   ============================================================ */
+
+@media (prefers-reduced-motion: reduce) {
+    .astra-background::before {
+        animation: none;
+        transform: none;
+    }
+}

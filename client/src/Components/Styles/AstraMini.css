@@ -1,0 +1,58 @@
+@import '../../tokens.css';
+
+.astra-mini-container {
+    --size: 20px;
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    display: grid;
+    place-items: center;
+}
+.astra-mini-ring {
+    position: absolute;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius: 50%;
+    box-shadow: 
+        0 0 5px color-mix(in srgb, var(--accent) 10%, transparent),
+        0 0 5px color-mix(in srgb, var(--accent-pink) 8%, transparent);
+    transition: transform 500ms ease, box-shadow 500ms ease;
+}
+
+.astra-mini-ring-outer {
+    width: 150%;
+    height: 150%;
+}
+.astra-mini-ring-inner {
+    width: 100%;
+    height: 100%;
+    border-color: color-mix(in srgb, var(--accent-pink) 55%, transparent);
+}
+
+#nav-pill-brand:hover .astra-mini-ring-outer {
+    transform: rotateX(150deg) rotateY(150deg);
+}
+#nav-pill-brand:hover .astra-mini-ring-inner {
+    transform: rotateX(150deg) rotateY(-150deg);
+}
+
+#nav-pill-brand:hover .astra-mini-ring {
+     box-shadow: 
+        0 0 10px color-mix(in srgb, var(--accent) 10%, transparent),
+        0 0 10px color-mix(in srgb, var(--accent-pink) 8%, transparent);
+}
+
+.astra-mini-core {
+    position: absolute;
+    width: 40%;
+    height: 40%;
+    background: linear-gradient(145deg, var(--accent), var(--accent-pink));
+    box-shadow: 
+        0 0 10px color-mix(in srgb, var(--accent) 50%, transparent),
+        0 0 10px 3px color-mix(in srgb, var(--accent-pink) 20%, transparent);
+    border-radius: 50%;
+    transition: scale 300ms ease, filter 300ms ease;
+}
+#nav-pill-brand:hover .astra-mini-core {
+    scale: 1.2;
+    filter: brightness(1.1);
+}

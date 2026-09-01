@@ -1,0 +1,120 @@
+@import '../../tokens.css';
+
+.loading-page {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+    animation: loading-enter 150ms ease-out;
+}
+@keyframes loading-enter {
+    0% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+.loading-content {
+    position: absolute;
+    top: calc(50% + 30px);
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
+    animation: loading-content-enter 300ms ease-out;
+}
+@keyframes loading-content-enter {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    100% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+
+.loading-logo-container {
+    --size: 225px;
+    position: relative;
+    width: var(--size);
+    height: var(--size);
+    display: grid;
+    place-items: center;
+}
+.loading-ring {
+    position: absolute;
+    border: 1px solid color-mix(in srgb, var(--accent) 55%, transparent);
+    border-radius: 50%;
+    box-shadow: 
+    0 0 20px color-mix(in srgb, var(--accent) 10%, transparent),
+    0 0 20px color-mix(in srgb, var(--accent-pink) 8%, transparent);
+}
+.loading-ring-outer {
+    width: 100%;
+    height: 100%;
+    animation: ring-rotator-3d 5s linear -5s infinite alternate;
+}
+.loading-ring-middle {
+    width: 70%;
+    height: 70%;
+    border-color: color-mix(in srgb, var(--accent-pink) 55%, transparent);
+    animation: ring-rotator-3d 5s linear -2.5s infinite alternate;
+}
+.loading-ring-inner {
+    width: 40%;
+    height: 40%;
+    animation: ring-rotator-3d 5s linear 0s infinite alternate;
+}
+
+@keyframes ring-rotator-3d {
+    0% {
+        transform: rotateX(0deg) rotateY(0deg);
+    }
+    100% {
+        transform: rotateX(150deg) rotateY(150deg);
+    }
+}
+
+
+.loading-core {
+    position: absolute;
+    width: 7%;
+    height: 7%;
+    background: linear-gradient(145deg, var(--accent), var(--accent-pink));
+    box-shadow: 
+    0 0 10px color-mix(in srgb, var(--accent) 50%, transparent),
+    0 0 10px 3px color-mix(in srgb, var(--accent-pink) 20%, transparent);
+    border-radius: 50%;
+    animation: pulse 1s ease-in-out infinite alternate;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+    }
+    100% {
+        transform: scale(1.5);
+    }
+}
+
+.loading-text {
+    text-align: center;
+}
+.loading-text h1 {
+    font-size: 2.75rem;
+    font-family: 'Fraunces', serif;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+.loading-text p {
+    margin: 0.6em 0 0;
+    color: #B0A3C4;
+    font-size: 1.25rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .loading-ring,
+    .loading-page,
+    .loading-content {
+        animation: none;
+    }
+}

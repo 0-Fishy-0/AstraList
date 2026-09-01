@@ -11,7 +11,7 @@
     background: linear-gradient(
         90deg, 
         color-mix(in srgb, var(--bg-surface) 45%, transparent) ,
-        color-mix(in srgb, var(--bg-surface-2)45%, transparent)
+        color-mix(in srgb, var(--bg-surface-2) 45%, transparent)
     );
     backdrop-filter: blur(8px);
     border: 1px solid var(--border);

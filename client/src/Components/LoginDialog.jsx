@@ -1,3 +1,5 @@
+import './Styles/LoginDialog.css'
+
 function LoginDialog(props) {
     const {
         selectedLogin,

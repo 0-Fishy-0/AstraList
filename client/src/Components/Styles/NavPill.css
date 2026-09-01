@@ -1,0 +1,222 @@
+@import '../../tokens.css';
+
+.nav-pill-vert {
+    position: fixed;
+    left: 20px;
+    z-index: 10;
+    width: var(--nav-pill-width);
+    top: 50%;
+    translate: 0 -50%;
+    background-color: var(--bg-surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 1.5rem 0.5rem;
+    box-shadow: 
+        0 0 8px var(--bg-base);
+}
+
+.nav-pill-list {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+.nav-pill-vert::before {
+    --indicator-width: 3px;
+    --indicator-height-shorten: 0.4rem;
+    content: '';
+    position: absolute;
+    position-anchor: --nav;
+    left: calc(anchor(left) - 0.4rem);
+    right: calc(anchor(left) + 0.4rem - var(--indicator-width));
+    top: calc(anchor(top) + var(--indicator-height-shorten));
+    bottom: calc(anchor(bottom) + var(--indicator-height-shorten));
+    background: 
+        linear-gradient(0deg, var(--accent-pink), var(--accent));
+    border-radius: 16px;
+    opacity: 0;
+    transition: inset 350ms 100ms, opacity 150ms ease;
+    transition-timing-function: 
+        linear(0, 0.207 4.4%, 0.388 8.8%, 0.548 13.3%, 0.688 17.9%, 0.749 20.2%, 0.807 22.6%, 0.859 25%, 0.908 27.5%, 0.951 30%, 0.989 32.5%, 1.022 35.1%, 1.051 37.7%, 1.072 40%, 1.09 42.3%, 1.104 44.7%, 1.116 47.2%, 1.124 49.7%, 1.129 52.3%, 1.132 54.9%, 1.131 57.7%, 1.123 62.4%, 1.108 67.7%, 1.088 72.7%, 1.038 84.3%, 1.017 90%, 1.004 95.2%, 1.001 97.6%, 1);
+}
+.nav-pill-vert:has(.nav-pill-item:hover)::before {
+    opacity: 1;
+    --indicator-height-shorten: 0.2rem;
+}
+.nav-pill-item {
+    display: grid;
+    place-content: center;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    padding: 0.5rem;
+    transition: backdrop-filter 200ms ease-out;
+}
+/* Any item hovered */
+.nav-pill-item:not(#nav-pill-brand):hover {
+    anchor-name: --nav;
+    backdrop-filter: brightness(1.5);
+}
+/* If button inside item is focused */
+.nav-pill-item:has( > button:focus-visible) {
+    anchor-name: --nav;
+    backdrop-filter: brightness(1.5);
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+}
+/* If any item is hovered, remove from active */
+.nav-pill-vert:has(.nav-pill-item:not(#nav-pill-brand):hover)
+.nav-pill-item:has(.nav-pill-link.active):not(:hover) {
+    anchor-name: none;
+}
+/* If button is focused, remove from active */
+.nav-pill-vert:has(.nav-pill-item>button:focus-visible)
+.nav-pill-item:has(.nav-pill-link.active):not(:hover) {
+    anchor-name: none;
+}
+
+
+.nav-pill-vert:has(.nav-pill-link.active)::before {
+    opacity: 1;
+}
+.nav-pill-item:has(> button) {
+    padding: 0;
+    place-content: stretch;
+}
+.nav-pill-item > button {
+    all: unset;
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    display: grid;
+    place-content: center;
+}
+
+.nav-pill-svg-wrapper {
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-content: center;
+}
+.nav-pill-svg-wrapper img {
+    width: 24px;
+    height: 24px;
+    user-select: none;
+}
+#nav-pill-profile-icon {
+    width: 20px;
+    height: 20px;
+}
+
+.nav-pill-link.active {
+    color: var(--accent);
+}
+
+.nav-pill-item:has(.nav-pill-link.active) {
+    anchor-name: --nav;
+    backdrop-filter: brightness(1.5);
+}
+
+/* Submenu styles */
+
+#nav-pill-list-icon {
+    anchor-name: --list;
+}
+
+.nav-submenu {
+    --gap-from-pill: 1.5rem;
+    --width: 150px;
+    position: fixed;
+    z-index: 8;
+    position-anchor: --list;
+    left: calc(anchor(right) + var(--gap-from-pill));
+    width: var(--width);
+    top: anchor(center);
+    translate: 0 -50%;
+    background-color: var(--bg-surface-2);
+    padding: 0.75rem 0.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    opacity: 0;
+    transform: translateX(-5px);
+    transition: 
+        opacity 200ms ease,
+        transform 200ms ease,
+        display 200ms allow-discrete,
+        overlay 200ms allow-discrete;
+}
+
+.nav-submenu:popover-open {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+@starting-style {
+    .nav-submenu:popover-open {
+        opacity: 0;
+        transform: translateX(-5px);
+    }
+}
+
+.nav-submenu::before {
+    --indicator-width: 3px;
+    --indicator-height-shorten: 0.4rem;
+    content: '';
+    position: absolute;
+    position-anchor: --submenu;
+    top: calc(anchor(top) + var(--indicator-height-shorten));
+    bottom: calc(anchor(bottom) + var(--indicator-height-shorten));
+    left: calc(anchor(left) - 0.3rem);
+    right: calc(anchor(left) + 0.3rem - var(--indicator-width));
+    border-radius: 16px;
+    background: 
+    linear-gradient(0deg, var(--accent-pink), var(--accent));
+    transition: inset 350ms 100ms, opacity 150ms ease;
+    transition-timing-function: 
+        linear(0, 0.207 4.4%, 0.388 8.8%, 0.548 13.3%, 0.688 17.9%, 0.749 20.2%, 0.807 22.6%, 0.859 25%, 0.908 27.5%, 0.951 30%, 0.989 32.5%, 1.022 35.1%, 1.051 37.7%, 1.072 40%, 1.09 42.3%, 1.104 44.7%, 1.116 47.2%, 1.124 49.7%, 1.129 52.3%, 1.132 54.9%, 1.131 57.7%, 1.123 62.4%, 1.108 67.7%, 1.088 72.7%, 1.038 84.3%, 1.017 90%, 1.004 95.2%, 1.001 97.6%, 1);
+}
+.nav-submenu:has(.nav-submenu-item:hover)::before {
+    --indicator-height-shorten: 0.2rem;
+}
+
+.nav-submenu-list {
+    list-style-type: none;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    anchor-name: --submenu;
+}
+
+.nav-submenu-link {
+    text-decoration: none;
+    width: 100%;
+}
+
+.nav-submenu-item {
+    display: flex;
+    justify-content: start;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem;
+    border-radius: 12px;
+    transition: filter 200ms ease, backdrop-filter 200ms ease;
+}
+.nav-submenu-item:hover {
+    filter: brightness(1.2);
+    backdrop-filter: brightness(1.2);
+    anchor-name: --submenu;
+}
+
+.nav-submenu-item span {
+    color: color-mix( in srgb, var(--text-primary) 70%, var(--text-muted));
+    font-size: 0.9rem;
+    letter-spacing: 0.02rem;
+    font-weight: 600;
+    margin-left: 0.5rem;
+}

@@ -1,7 +1,9 @@
 import './Styles/LoginPage.css'
 import LoginCard from './LoginCard.jsx'
+import AstraBackground from './AstraBackground.jsx'
 import AstraRings from "./AstraRings.jsx";
 import LoginDialog from './LoginDialog.jsx';
+import LoadingPage from './LoadingPage.jsx';
 import { useState, useRef, useEffect } from 'react';
 
 function LoginPage() {
@@ -10,6 +12,7 @@ function LoginPage() {
     const [selectedLogin, setSelectedLogin] = useState('none');
     const [isClosing, setIsClosing] = useState(false);
     const loginDialogRef = useRef(null);
+    const [isAuthorizing, setIsAuthorizing] = useState(false);
 
     
     function handleClick(id) {
@@ -21,8 +24,14 @@ function LoginPage() {
     }
 
     async function handleDialogButtonClick(service) {
-        console.log(`Login with ${service} clicked`);
-        window.location.href = 'http://localhost:3000/auth/anilist';
+        if (service === 'anilist') {
+            setIsAuthorizing(true);
+            requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                    window.location.href = 'http://localhost:3000/auth/anilist';
+                });
+            });
+        }
     }
 
     function handleAnimationEnd(event) {
@@ -44,16 +53,17 @@ function LoginPage() {
 
     }, [selectedLogin]);
     
+
+    if (isAuthorizing) {
+        return (
+            <LoadingPage text="Redirecting to AniList..." />
+        );
+    }
+
     return(
         <>
         <main className="main-page">
-            <div className="background-detail" />
-             <div className="gradient-bg">
-                <div className="mesh-light mesh-dark" />
-                <div className="mesh-light mesh-purple-core" />
-                <div className="mesh-light mesh-purple-glow" />
-                <div className="mesh-light mesh-pink-soft" />
-            </div>
+            <AstraBackground showDetails={true}/>
             
             <section className={`content ${selectedLogin !== 'none' ? 'login-open' : ''}`}>
                 

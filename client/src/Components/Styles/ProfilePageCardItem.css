@@ -1,0 +1,101 @@
+@import '../../tokens.css';
+
+.rightnow-cc-item {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    padding-inline-end: 0.75rem;
+    padding-block: 0.5rem;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: padding 250ms ease, backdrop-filter 150ms ease;
+}
+.rightnow-cc-item:hover {
+    padding-inline-start: 0.3rem;
+    backdrop-filter: brightness(1.25);
+}
+.rightnow-cc-item-photo {
+    width: 40px;
+    height: 52px;
+    border-radius: 4px;
+    background: 
+        linear-gradient(
+            135deg,
+            var(--accent-pink) 20%,
+            var(--accent) 100%
+        );
+}
+
+.rightnow-cc-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+    flex: 1;
+}
+
+.rightnow-cc-item-title {
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.rightnow-cc-item-tags {
+    --gap: 0.15rem;
+    display: flex;
+    gap: var(--gap);
+    align-items: center;
+}
+.rightnow-cc-item-tags > *:not(:last-child)::after {
+    content: '•';
+    margin-left: var(--gap);
+}
+.rightnow-cc-item-tag {
+    color: var(--text-muted);
+    font-size: 0.7rem;
+}
+.rightnow-cc-item-stat {
+    color: var(--text-muted);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+
+/* ------------------------------------------------------ */
+/* -----Every 4th card different gradient shiiiii-------- */
+/* ------------------------------------------------------ */
+
+.rightnow-cc-item:nth-child(4n) .rightnow-cc-item-photo {
+    background: 
+        linear-gradient(
+            135deg,
+            var(--accent-pink) 20%,
+            var(--accent) 100%
+        );
+}
+.rightnow-cc-item:nth-child(4n + 1) .rightnow-cc-item-photo {
+    background:
+        linear-gradient(
+            135deg,
+            hsl(30, 58%, 62%) 20%,
+            hsl(355, 68%, 59%) 100%
+        );
+}
+
+.rightnow-cc-item:nth-child(4n + 2) .rightnow-cc-item-photo {
+    background:
+        linear-gradient(
+            135deg,
+            hsl(83, 58%, 62%) 20%,
+            hsl(158, 55%, 42%) 100%
+        );
+}
+
+.rightnow-cc-item:nth-child(4n + 3) .rightnow-cc-item-photo {
+    background:
+        linear-gradient(
+            135deg,
+            hsl(190, 64%, 64%) 20%,
+            hsl(244, 62%, 56%) 100%
+        );
+}
