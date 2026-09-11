@@ -19,7 +19,7 @@ function NavPill() {
                         popoverTarget='nav-submenu-popup'
                     >
                         <div className="nav-pill-svg-wrapper">
-                            <img src="/src/assets/list.svg" alt="Lists" id='nav-pill-list-icon' />
+                            <img src="/src/assets/list-icon.svg" alt="Lists" id='nav-pill-list-icon' />
                         </div>
                     </button>
                 </li>
@@ -29,7 +29,7 @@ function NavPill() {
                         className={({ isActive }) => `nav-pill-link ${user && isActive ? 'active' : ''}`}
                         >
                         <div className="nav-pill-svg-wrapper">
-                            <img src="/src/assets/profile.svg" alt="Profile" id='nav-pill-profile-icon' />
+                            <img src="/src/assets/profile-icon.svg" alt="Profile" id='nav-pill-profile-icon' />
                         </div>
                     </NavLink>
                 </li>

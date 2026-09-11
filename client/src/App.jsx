@@ -87,7 +87,13 @@ function App() {
 				/>
 				<Route
 					path="/list/anime"
-					element={<AnimeListPage />}
+					element={
+						authStatus === 'loading'
+						? <LoadingPage text='Loading Anime List...' />
+						: authStatus === 'unauthenticated'
+						? <Navigate to="/" replace />
+						: <AnimeListPage />
+					}
 				/>
 			</Route>
 		</Routes>

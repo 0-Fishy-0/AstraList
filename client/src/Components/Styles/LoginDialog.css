@@ -226,8 +226,8 @@
 
     background: color-mix(in srgb, var(--text-primary) 80%, transparent);
 
-    mask: url("../../assets/anilist.svg") center / contain no-repeat;
-    -webkit-mask: url("../../assets/anilist.svg") center / contain no-repeat;
+    mask: url("../../assets/anilist-icon.svg") center / contain no-repeat;
+    -webkit-mask: url("../../assets/anilist-icon.svg") center / contain no-repeat;
 }
 
 .login-btn-bottom-text {

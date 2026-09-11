@@ -1,3 +1,4 @@
+import {requestAniList, getAnimeList} from './anilist.js';
 import express from 'express';
 import cors from 'cors';
 import { randomUUID, randomInt } from 'node:crypto';
@@ -136,22 +137,12 @@ app.get('/auth/anilist/callback', async (req, res) => {
         }
     `;
    
-    const viewerResponse = await fetch('https://graphql.anilist.co', {
-        method: 'POST',
+    const viewerData = await requestAniList(
+        query, 
+        {}, 
+        data.access_token);
 
-        headers: {
-            'Authorization': `Bearer ${data.access_token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-        },
-
-        body: JSON.stringify({
-            query: query
-        })
-    })
-
-    const viewerData = await viewerResponse.json();
-    const viewer = viewerData.data.Viewer;
+    const viewer = viewerData.Viewer;
 
     const defaultHandle = generateDefaultHandle();
     const now = new Date();
@@ -338,6 +329,31 @@ app.get('/api/profile/:handle', async (req, res) => {
     })
 
 })
+app.get('/api/list/anime', requireAuth, async (req, res) => {
+    try {
+        const anilistAccount = req.user.accounts?.anime?.anilist;
+
+        if (!anilistAccount?.accessToken || !anilistAccount?.userId) {
+            return res.status(409).json({
+                error: 'ANILIST_NOT_CONNECTED'
+            });
+        }
+
+        const entries = await getAnimeList(
+            anilistAccount.userId, 
+            anilistAccount.accessToken
+        );
+
+        res.json({entries});
+    } catch (error) {
+        console.error('Failed to fetch AniList anime list:', error);
+
+        res.status(502).json({
+            error: 'ANILIST_LIST_REQUEST_FAILED'
+        });
+    }
+});
+
 
 // START SERVER
 app.listen(PORT, () => {
