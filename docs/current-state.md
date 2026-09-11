@@ -1,6 +1,6 @@
 # AstraList — Current State
 
-Updated: 2026-09-01
+Updated: 2026-09-12
 
 This file is the "what actually exists now" snapshot.
 
@@ -356,50 +356,59 @@ Do not half-fix each link individually now.
 
 # `/list/anime`
 
-An `AnimeListPage` route/component shell exists and renders through the shared AppLayout.
+`AnimeListPage` is a protected personal list route rendered through the shared AppLayout.
 
-Current page is intentionally skeletal while the design is being decided.
+Working:
 
-The actual list UI is the next major design/product task.
+- authenticated AniList list fetching through Express,
+- normalized row data with real covers and metadata,
+- loading, error, empty-list, and empty-category states,
+- category filtering,
+- responsive row/category behavior,
+- progress, rating, status-prompt, and advanced-editor mutations.
 
 ---
 
-# Anime List design status
+# Anime List mutations
 
-The design is NOT finalized.
+AniList remains the source of truth. Editable list values are not mirrored in MongoDB.
 
-The user has rejected card-heavy mockups and also rejected the latest dense/table mockups as not feeling right.
-
-Current desired functional ingredients are clearer than the exact visual composition:
+Protected mutation endpoint:
 
 ```text
-list/row layout, not cards
-small image on the left
-progress: x / y +
-click + increments x
-user rating: - or 1..10
-2-3 tags
-small edit control
+PATCH /api/list/anime/:entryId
 ```
 
-Detailed edit should eventually expose things such as:
+Supported partial fields:
 
 ```text
-episode count
+progress
 status
-start date
-end date
-user score
+rating
+startedAt
+completedAt
 ```
 
-Progress automation ideas:
+Only supplied fields are sent to AniList. This preserves provider details AstraList does not expose, including `REPEATING` when an unrelated field is edited.
+
+Rating contract:
 
 ```text
-Planning + increment from 0
--> prompt to move to Watching
-
-Watching + progress reaches total
--> prompt to move to Completed
+AstraList UI: 1..10 or null
+AniList write: scoreRaw = rating * 10, or 0 to clear
+AniList read: score(format: POINT_10)
 ```
 
-The next mockup should start fresh from this product intent rather than blindly copying the previous rendered attempts.
+This avoids depending on the AniList user's configured score format.
+
+Advanced editor behavior:
+
+```text
+field changes -> editDraft only
+explicit Save -> one multi-field AniList mutation
+Cancel / Escape / outside click / close -> discard draft, no mutation
+```
+
+The dialog remains open on failed saves and blocks dismissal only while a requested save is in flight.
+
+AniList fuzzy dates are preserved when untouched. Complete dates can be edited with native date inputs, while partial dates are shown as provider hints and can be explicitly cleared.

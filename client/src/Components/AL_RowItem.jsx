@@ -1,11 +1,18 @@
 import './Styles/AL_RowItem.css';
 
 function AL_RowItem({ 
-    anime, handleIncrement, setRatingTargetId, isPromptTarget, handleOpenAdvanceEdit
+    anime,
+    handleIncrement,
+    setRatingTargetId,
+    isEntryUpdating,
+    isProgressUpdating,
+    isPromptTarget,
+    handleOpenAdvanceEdit
  }) {
 
     const hasKnownTotal = anime.totalEpisodes != null;
     const hasReachedTotal = hasKnownTotal && anime.progress >= anime.totalEpisodes;
+    const isProgressDisabled = hasReachedTotal || isEntryUpdating;
 
     return (
         <div className="al-row-item" data-status={anime.status}>
@@ -15,6 +22,7 @@ function AL_RowItem({
                         src={anime.coverImage} 
                         alt=""
                         loading='lazy'
+                        decoding='async'
                         onError={event => event.currentTarget.hidden = true}    
                     />
                 )}
@@ -37,6 +45,10 @@ function AL_RowItem({
                     <button 
                         data-rated={anime.rating !== null}
                         popoverTarget='al-rating-popover'
+                        disabled={isEntryUpdating}
+                        aria-label={`Rate ${anime.title}. Current rating: ${
+                            anime.rating ?? 'unrated'
+                        }`}
                         onClick={() => setRatingTargetId(anime.id)}
                     >
                         {anime.rating ?? '-'}
@@ -50,16 +62,28 @@ function AL_RowItem({
                         <span className='al-ri-progress-end'>{anime.totalEpisodes ?? '?'}</span>
                         <button 
                             className="al-ri-progress-plus"
-                            disabled={hasReachedTotal}
+                            disabled={isProgressDisabled}
+                            aria-busy={isProgressUpdating}
+                            aria-label={
+                                isProgressUpdating
+                                    ? `Updating progress for ${anime.title}`
+                                    : hasReachedTotal
+                                    ? `${anime.title} has reached its episode total`
+                                    : `Increment progress for ${anime.title}`
+                            }
                             onClick={() => handleIncrement(anime)}
                             data-prompt-anchor={isPromptTarget || undefined}
                         >
-                            {hasReachedTotal ? '✓' : '+'}
+                            {isProgressUpdating ? '...' : hasReachedTotal ? '✓' : '+'}
                         </button>
                     </div>
                 </div>
                 <div className="al-row-item-edit">
-                    <button onClick={() => handleOpenAdvanceEdit(anime)}></button>
+                    <button
+                        aria-label={`Edit ${anime.title}`}
+                        disabled={isEntryUpdating}
+                        onClick={() => handleOpenAdvanceEdit(anime)}
+                    ></button>
                 </div>
             </div>
         </div>

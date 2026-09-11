@@ -2,6 +2,7 @@ import './Styles/AnimeListPage.css';
 import { useState, useRef, useEffect, useContext } from "react";
 import { AuthContext } from '../App.jsx';
 import AL_RowItem from './AL_RowItem.jsx';
+import LoadingPage from './LoadingPage.jsx';
 
 const CATEGORIES = [
     { key: 'all', label: 'All Anime' },
@@ -12,12 +13,74 @@ const CATEGORIES = [
     { key: 'planning', label: 'Planning' }
 ]
 
+function fuzzyDateToInputValue(date) {
+    if (!date?.year || !date.month || !date.day) return '';
+    const year = String(date.year).padStart(4, '0');
+    const month = String(date.month).padStart(2, '0');
+    const day = String(date.day).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+function inputValueToFuzzyDate(value) {
+    if (!value) return null;
+
+    const [year, month, day] = value.split('-').map(Number);
+    return { year, month, day };
+}
+function hasFuzzyDateValue(date) {
+    return Boolean(date && [date.year, date.month, date.day].some(Number.isInteger));
+}
+function formatFuzzyDate(date) {
+    if (!date?.year) return '';
+
+    const month = date.month ? String(date.month).padStart(2, '0') : '??';
+    const day = date.day ? String(date.day).padStart(2, '0') : '??';
+    return `${date.year}-${month}-${day}`;
+}
+function buildAnimeEntryUpdates(editTarget, editDraft, dirtyFields) {
+    if (!editTarget || !editDraft) return {};
+
+    const updates = {};
+    const rating = editDraft.rating === '' ? null : Number(editDraft.rating);
+    const progress = Number(editDraft.progress);
+    const originalStartedAt = fuzzyDateToInputValue(editTarget.startedAt);
+    const originalCompletedAt = fuzzyDateToInputValue(editTarget.completedAt);
+
+    if (editDraft.status !== editTarget.status) updates.status = editDraft.status;
+    if (rating !== editTarget.rating) updates.rating = rating;
+    if (progress !== editTarget.progress) updates.progress = progress;
+    const startedAtWasPartial = !originalStartedAt && hasFuzzyDateValue(editTarget.startedAt);
+    const completedAtWasPartial = !originalCompletedAt && hasFuzzyDateValue(editTarget.completedAt);
+
+    if (
+        editDraft.startedAt !== originalStartedAt ||
+        (startedAtWasPartial && dirtyFields.has('startedAt'))
+    ) {
+        updates.startedAt = inputValueToFuzzyDate(editDraft.startedAt);
+    }
+    if (
+        editDraft.completedAt !== originalCompletedAt ||
+        (completedAtWasPartial && dirtyFields.has('completedAt'))
+    ) {
+        updates.completedAt = inputValueToFuzzyDate(editDraft.completedAt);
+    }
+
+    return updates;
+}
+
 function AnimeListPage() {
 
-    const { user } = useContext(AuthContext);
+    const { user, setUser, setAuthStatus } = useContext(AuthContext);
     const [animeList, setAnimeList] = useState([]);
+    const [listStatus, setListStatus] = useState('loading');
     const [activeCategory, setActiveCategory] = useState('all');
+    const [canScrollCategoriesRight, setCanScrollCategoriesRight] = useState(false);
     const [ratingTargetId, setRatingTargetId] = useState(null);
+    const [isRatingUpdating, setIsRatingUpdating] = useState(false);
+    const [ratingUpdateError, setRatingUpdateError] = useState(null);
+    const [progressUpdatingIds, setProgressUpdatingIds] = useState(() => new Set());
+    const [listMutationError, setListMutationError] = useState(null);
+    const [statusUpdatingEntryId, setStatusUpdatingEntryId] = useState(null);
+    const [statusUpdateError, setStatusUpdateError] = useState(null);
     const [statusChangeObj, setStatusChangeObj] = useState({
         animeId: null,
         nextStatus: null,
@@ -25,8 +88,13 @@ function AnimeListPage() {
         accept: ''
     });
     const statusPromptRef = useRef(null);
+    const statusPromptCancelRef = useRef(null);
+    const categoriesRef = useRef(null);
     const [editTarget, setEditTarget] = useState(null);
     const [editDraft, setEditDraft] = useState(null);
+    const [editDirtyFields, setEditDirtyFields] = useState(() => new Set());
+    const [isEditSaving, setIsEditSaving] = useState(false);
+    const [editSaveError, setEditSaveError] = useState(null);
     const advanceEditDialogRef = useRef(null);
 
     // Show only anime that matches the active category, or all if 'all' is selected
@@ -35,88 +103,261 @@ function AnimeListPage() {
         ? true 
         : anime.status === activeCategory
     );
+    const editUpdates = buildAnimeEntryUpdates(editTarget, editDraft, editDirtyFields);
+    const hasEditChanges = Object.keys(editUpdates).length > 0;
+    const isStatusUpdating = statusUpdatingEntryId !== null;
+    const areEntryMutationsLocked =
+        progressUpdatingIds.size > 0 ||
+        isRatingUpdating ||
+        isStatusUpdating ||
+        isEditSaving ||
+        statusChangeObj.animeId !== null;
 
-    function handleRating(rating) {
+    async function requestAnimeEntryUpdate(entryId, updates) {
+        const response = await fetch(
+            `http://localhost:3000/api/list/anime/${entryId}`,
+            {
+                method: 'PATCH',
+                credentials: 'include',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(updates)
+            }
+        );
+
+        if (response.status === 401) {
+            setUser(null);
+            setAuthStatus('unauthenticated');
+            return null;
+        }
+
+        if (!response.ok) {
+            throw new Error(`Failed to update anime entry: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.entry?.id !== entryId) {
+            throw new Error('Invalid anime entry update response');
+        }
+
+        return data.entry;
+    }
+
+    function mergeConfirmedEntry(updatedEntry, updatedFields) {
+        const confirmedUpdates = Object.fromEntries(
+            updatedFields
+                .filter((field) => Object.hasOwn(updatedEntry, field))
+                .map((field) => [field, updatedEntry[field]])
+        );
+
         setAnimeList((currentList) =>
             currentList.map((anime) =>
-                anime.id === ratingTargetId
-                ? {...anime, rating}
-                : anime
+                anime.id === updatedEntry.id
+                    ? { ...anime, ...confirmedUpdates }
+                    : anime
             )
         );
     }
 
-    function handleIncrement(anime) {
+    function handleOpenRating(entryId) {
+        if (areEntryMutationsLocked) return;
+
+        setRatingTargetId(entryId);
+        setRatingUpdateError(null);
+    }
+
+    async function handleRating(rating) {
+        if (!ratingTargetId || isRatingUpdating) return;
+
+        const entryId = ratingTargetId;
+        setIsRatingUpdating(true);
+        setRatingUpdateError(null);
+        setListMutationError(null);
+
+        try {
+            const updatedEntry = await requestAnimeEntryUpdate(entryId, { rating });
+            if (!updatedEntry) return;
+
+            mergeConfirmedEntry(updatedEntry, ['rating']);
+            document.getElementById('al-rating-popover')?.hidePopover();
+        } catch (error) {
+            console.error('Error updating anime rating:', error);
+            setRatingUpdateError('Unable to update rating.');
+            setListMutationError('Unable to update anime rating.');
+        } finally {
+            setIsRatingUpdating(false);
+        }
+    }
+
+    async function handleIncrement(anime) {
         if (
+            areEntryMutationsLocked ||
             anime.totalEpisodes != null &&
             anime.progress >= anime.totalEpisodes
         ) return;
 
         const nextProgress = anime.progress + 1;
-        
-        setAnimeList((currentList) =>
-            currentList.map((item) =>
-                item.id === anime.id
-                ? {...item, progress: nextProgress}
-                : item
-            )
-        )
-        let nextStatus = null;
-        if (
-            (anime.status === 'planning' && nextProgress === 1) || 
-            anime.status === 'on-hold' || 
-            anime.status === 'dropped'
-        ) {
-            nextStatus = 'watching';
-        }
-        if (anime.totalEpisodes != null && anime.status !== 'completed' && nextProgress === anime.totalEpisodes) {
-            nextStatus = 'completed';
-        }
-        if (nextStatus) {
-            setStatusChangeObj({
-                animeId: anime.id,
-                nextStatus,
-                message: nextStatus === 'completed'
-                    ? 'Mark this anime as completed?'
-                    : 'Move this anime to watching?',
-                accept: nextStatus === 'completed'
-                    ? 'Mark as completed'
-                    : 'Set as watching'
-            })
-            statusPromptRef.current?.showPopover();
+
+        setListMutationError(null);
+        setProgressUpdatingIds((currentIds) => {
+            const nextIds = new Set(currentIds);
+            nextIds.add(anime.id);
+            return nextIds;
+        });
+
+        try {
+            const updatedEntry = await requestAnimeEntryUpdate(
+                anime.id,
+                { progress: nextProgress }
+            );
+            if (!updatedEntry) return;
+
+            if (!Number.isInteger(updatedEntry.progress)) {
+                throw new Error('Invalid progress update response');
+            }
+
+            const confirmedProgress = updatedEntry.progress;
+            mergeConfirmedEntry(updatedEntry, ['progress']);
+
+            let nextStatus = null;
+
+            if (
+                (anime.status === 'planning' && confirmedProgress === 1) ||
+                anime.status === 'on-hold' ||
+                anime.status === 'dropped'
+            ) {
+                nextStatus = 'watching';
+            }
+
+            if (
+                anime.totalEpisodes != null &&
+                anime.status !== 'completed' &&
+                confirmedProgress === anime.totalEpisodes
+            ) {
+                nextStatus = 'completed';
+            }
+
+            if (nextStatus) {
+                setStatusUpdateError(null);
+                setStatusChangeObj({
+                    animeId: anime.id,
+                    nextStatus,
+                    message: nextStatus === 'completed'
+                        ? 'Mark this anime as completed?'
+                        : 'Move this anime to watching?',
+                    accept: nextStatus === 'completed'
+                        ? 'Mark as completed'
+                        : 'Set as watching'
+                });
+
+                requestAnimationFrame(() => {
+                    statusPromptRef.current?.showPopover();
+                    statusPromptCancelRef.current?.focus();
+                });
+            }
+        } catch (error) {
+            console.error('Error updating anime progress:', error);
+            setListMutationError(`Unable to update progress for ${anime.title}.`);
+        } finally {
+            setProgressUpdatingIds((currentIds) => {
+                const nextIds = new Set(currentIds);
+                nextIds.delete(anime.id);
+                return nextIds;
+            });
         }
     }
 
-    function handleStatusChangeOnIncrement() {
-        setAnimeList((currentList) =>
-            currentList.map((anime) =>
-                anime.id === statusChangeObj.animeId
-                ? {...anime, status: statusChangeObj.nextStatus}
-                : anime
-            )
-        );
+    async function handleStatusChangeOnIncrement() {
+        if (!statusChangeObj.animeId || !statusChangeObj.nextStatus || isStatusUpdating) {
+            return;
+        }
+
+        const entryId = statusChangeObj.animeId;
+        const nextStatus = statusChangeObj.nextStatus;
+
+        setStatusUpdatingEntryId(entryId);
+        setStatusUpdateError(null);
+        setListMutationError(null);
+
+        try {
+            const updatedEntry = await requestAnimeEntryUpdate(
+                entryId,
+                { status: nextStatus }
+            );
+            if (!updatedEntry) return;
+
+            statusPromptRef.current?.hidePopover();
+            resetStatusChangePrompt();
+            mergeConfirmedEntry(updatedEntry, ['status']);
+        } catch (error) {
+            console.error('Error updating anime status:', error);
+            setStatusUpdateError('Unable to update status. Try again.');
+            setListMutationError('Unable to update anime status.');
+        } finally {
+            setStatusUpdatingEntryId(null);
+        }
+    }
+
+    function resetStatusChangePrompt() {
+        setStatusChangeObj({
+            animeId: null,
+            nextStatus: null,
+            message: '',
+            accept: ''
+        });
+        setStatusUpdateError(null);
+    }
+
+    function handleStatusPromptToggle(event) {
+        if (event.newState === 'closed') {
+            resetStatusChangePrompt();
+        }
     }
 
     function handleOpenAdvanceEdit(anime) {
+        if (areEntryMutationsLocked) return;
+
         setEditTarget(anime);
+        setEditSaveError(null);
+        setEditDirtyFields(new Set());
 
         setEditDraft({
             status: anime.status,
             rating: anime.rating ?? '',
             progress: anime.progress,
-            startedAt: anime.startedAt ?? '',
-            completedAt: anime.completedAt ?? ''
+            startedAt: fuzzyDateToInputValue(anime.startedAt),
+            completedAt: fuzzyDateToInputValue(anime.completedAt)
         });
 
         advanceEditDialogRef.current?.showModal();
     }
-    function handleCloseAdvanceEdit(anime) {
-        setEditTarget(anime);
+    function handleCloseAdvanceEdit() {
+        if (isEditSaving) return;
         advanceEditDialogRef.current?.close();
+    }
+
+    function handleAdvanceEditClosed() {
+        setEditTarget(null);
+        setEditDraft(null);
+        setEditDirtyFields(new Set());
+        setEditSaveError(null);
+    }
+
+    function handleAdvanceEditCancel(event) {
+        if (isEditSaving) event.preventDefault();
     }
 
     function handleEditFieldChange(event) {
         const { name, value } = event.target;
+
+        setEditDirtyFields((currentFields) => {
+            const nextFields = new Set(currentFields);
+            nextFields.add(name);
+            return nextFields;
+        });
+
         setEditDraft((currentDraft) => ({
             ...currentDraft,
             [name]: value,
@@ -128,26 +369,45 @@ function AnimeListPage() {
             )
         }));
     }
-    function handleSaveAdvanceEdit(event) {
+
+    function handleClearEditDate(field) {
+        setEditDirtyFields((currentFields) => {
+            const nextFields = new Set(currentFields);
+            nextFields.add(field);
+            return nextFields;
+        });
+        setEditDraft((currentDraft) => ({
+            ...currentDraft,
+            [field]: ''
+        }));
+    }
+    async function handleSaveAdvanceEdit(event) {
         event.preventDefault();
 
-        if (!editTarget || !editDraft) return;
+        if (!editTarget || !editDraft || isEditSaving) return;
 
-        const updatedEntry = {
-            status: editDraft.status,
-            rating: editDraft.rating === '' ? null : Number(editDraft.rating),
-            progress: Number(editDraft.progress),
-            startedAt: editDraft.startedAt === '' ? null : editDraft.startedAt,
-            completedAt: editDraft.completedAt === '' ? null : editDraft.completedAt
+        const updates = buildAnimeEntryUpdates(editTarget, editDraft, editDirtyFields);
+
+        if (Object.keys(updates).length === 0) {
+            advanceEditDialogRef.current?.close();
+            return;
         }
-         setAnimeList((currentList) =>
-            currentList.map((anime) =>
-                anime.id === editTarget.id
-                    ? { ...anime, ...updatedEntry }
-                    : anime
-            )
-        );
-        advanceEditDialogRef.current?.close();
+
+        setIsEditSaving(true);
+        setEditSaveError(null);
+
+        try {
+            const updatedEntry = await requestAnimeEntryUpdate(editTarget.id, updates);
+            if (!updatedEntry) return;
+
+            advanceEditDialogRef.current?.close();
+            mergeConfirmedEntry(updatedEntry, Object.keys(updates));
+        } catch (error) {
+            console.error('Error saving anime entry:', error);
+            setEditSaveError('Unable to save these changes. Try again.');
+        } finally {
+            setIsEditSaving(false);
+        }
     }
 
     useEffect(() => {
@@ -158,19 +418,67 @@ function AnimeListPage() {
                     credentials: 'include'
                     }
                 )
+                if (response.status === 401) {
+                    setUser(null);
+                    setAuthStatus('unauthenticated');
+                    return;
+                }
                 if (!response.ok) {
                     throw new Error(`Failed to fetch anime list: ${response.status}`);
                 }
                 const data = await response.json();
+                if (!Array.isArray(data.entries)) {
+                    throw new Error('Invalid response format: entries is not an array');
+                }
                 setAnimeList(data.entries);
+                setListStatus('success');
             }
             catch (error) {
                 console.error('Error fetching anime list:', error);
+                setListStatus('error');
             }
         }
 
         fetchAnimeList();
-    }, []);
+    }, [setUser, setAuthStatus]);
+
+    useEffect(() => {
+        if (listStatus !== 'success') return;
+
+        const categories = categoriesRef.current;
+        if (!categories) return;
+
+        function updateCategoryOverflow() {
+            const remainingScroll =
+                categories.scrollWidth - categories.clientWidth - categories.scrollLeft;
+
+            setCanScrollCategoriesRight(remainingScroll > 1);
+        }
+
+        updateCategoryOverflow();
+
+        const resizeObserver = new ResizeObserver(updateCategoryOverflow);
+        resizeObserver.observe(categories);
+        categories.addEventListener('scroll', updateCategoryOverflow, { passive: true });
+
+        return () => {
+            resizeObserver.disconnect();
+            categories.removeEventListener('scroll', updateCategoryOverflow);
+        };
+    }, [listStatus]);
+
+    if (listStatus === 'loading') {
+        return <LoadingPage text='Loading Anime List...'/>;
+    }
+    if (listStatus === 'error') {
+        return ( // FOR AGENTS:- CHANGE THIS TO ERROR PAGE WHEN IMPLEMENTED.
+            <main className="anime-list-page"> {/* Placeholder */}
+                <p className="al-list-state" role="alert">
+                    Unable to load your anime list.
+                </p>
+            </main>
+        )
+    }
 
     return (
         <main className='anime-list-page'>
@@ -181,53 +489,82 @@ function AnimeListPage() {
                         <span>{user.displayName.charAt(0).toUpperCase()}</span>
                         {/* Insert Image Later */}
                     </div>
-                        <div className="al-categories" data-active-category={activeCategory}>
-                            {CATEGORIES.map((category) => (
-                                <button
-                                    key={category.key}
-                                    data-category={category.key}
-                                    className={`al-category ${
-                                        activeCategory === category.key ? 'active' : ''
-                                    }`}
-                                    onClick={() => setActiveCategory(category.key)}
-                                >
-                                    <span>{category.label}</span>                                    
-                                </button>
-                            ))}
+                        <div className="al-categories-scroll-wrapper">
+                            <div
+                                ref={categoriesRef}
+                                className="al-categories"
+                                data-active-category={activeCategory}
+                            >
+                                {CATEGORIES.map((category) => (
+                                    <button
+                                        key={category.key}
+                                        data-category={category.key}
+                                        aria-pressed={activeCategory === category.key}
+                                        className={`al-category ${
+                                            activeCategory === category.key ? 'active' : ''
+                                        }`}
+                                        onClick={() => setActiveCategory(category.key)}
+                                    >
+                                        <span>{category.label}</span>
+                                    </button>
+                                ))}
+                            </div>
+                            {canScrollCategoriesRight && (
+                                <span className="al-categories-overflow-indicator" aria-hidden="true">
+                                    &gt;
+                                </span>
+                            )}
                         </div>
                         <div className="al-search">
                             <img src="/src/assets/search-icon.svg" alt="Search" />
                         </div>
                 </section>
                 <section className="al-toolbar">
-                    <button className="al-toolbar-item">T</button>
-                    <button className="al-toolbar-item">E</button>
-                    <button className="al-toolbar-item">M</button>
-                    <button className="al-toolbar-item">P</button>
-                    <button className="al-toolbar-item">R</button>
+                    <button className="al-toolbar-item" disabled>T</button>
+                    <button className="al-toolbar-item" disabled>E</button>
+                    <button className="al-toolbar-item" disabled>M</button>
+                    <button className="al-toolbar-item" disabled>P</button>
+                    <button className="al-toolbar-item" disabled>R</button>
                 </section>
+                {listMutationError && (
+                    <p className="al-progress-update-error" role="alert">
+                        {listMutationError}
+                    </p>
+                )}
                 <section className="al-content" data-category={activeCategory}>
-                    {visibleAnime.map((anime) => (
-                        <AL_RowItem
-                            key={anime.id}
-                            anime={anime}
-                            handleIncrement={handleIncrement}
-                            setRatingTargetId={setRatingTargetId}
-                            isPromptTarget={statusChangeObj.animeId === anime.id}
-                            handleOpenAdvanceEdit={handleOpenAdvanceEdit}
-                        />
-                    ))}
+                    {animeList.length === 0 ? (
+                        <p className="al-list-state">
+                            Your anime list is empty.
+                        </p>
+                    ) : visibleAnime.length === 0 ? (
+                        <p className="al-list-state">
+                            No anime in this category.
+                        </p>
+                    ) : (
+                        visibleAnime.map((anime) => (
+                            <AL_RowItem
+                                key={anime.id}
+                                anime={anime}
+                                handleIncrement={handleIncrement}
+                                setRatingTargetId={handleOpenRating}
+                                isEntryUpdating={areEntryMutationsLocked}
+                                isProgressUpdating={progressUpdatingIds.has(anime.id)}
+                                isPromptTarget={statusChangeObj.animeId === anime.id}
+                                handleOpenAdvanceEdit={handleOpenAdvanceEdit}
+                            />
+                        ))
+                    )}
                 </section>
                 <div 
                     id="al-rating-popover"
                     popover='auto'
+                    aria-busy={isRatingUpdating}
                 >
                     <div className="al-rating-choices">
                         <button
                             className="al-rating-choice"
                             onClick={() => handleRating(null)}
-                            popoverTarget="al-rating-popover"
-                            popoverTargetAction="hide"
+                            disabled={isRatingUpdating}
                         >
                             -
                         </button>
@@ -237,40 +574,61 @@ function AnimeListPage() {
                                     key={rating}
                                     className='al-rating-choice'
                                     onClick={() => handleRating(rating)}
-                                    popoverTarget='al-rating-popover'
-                                    popoverTargetAction='hide'
+                                    disabled={isRatingUpdating}
                                 >
                                     {rating}
                                 </button>
                             )) 
                         }
                     </div>
+                    {ratingUpdateError && (
+                        <p className="al-mutation-error" role="alert">
+                            {ratingUpdateError}
+                        </p>
+                    )}
                 </div>
-                <div ref={statusPromptRef} id="al-status-change-prompt" popover='auto'>
-                    <span>{statusChangeObj.message}</span>
+                <div
+                    ref={statusPromptRef}
+                    id="al-status-change-prompt"
+                    popover='auto'
+                    role="dialog"
+                    aria-labelledby="al-status-change-message"
+                    aria-busy={isStatusUpdating}
+                    onToggle={handleStatusPromptToggle}
+                >
+                    <span id="al-status-change-message">{statusChangeObj.message}</span>
                     <div className="al-status-change-options">
                         <button 
+                            ref={statusPromptCancelRef}
                             className='al-status-change-deny'
                             popoverTarget='al-status-change-prompt'
                             popoverTargetAction='hide'
+                            disabled={isStatusUpdating}
                         >
                             Cancel
                         </button>
                         <button 
                             className='al-status-change-accept'
-                            popoverTarget='al-status-change-prompt'
-                            popoverTargetAction='hide'
+                            disabled={isStatusUpdating}
                             onClick={handleStatusChangeOnIncrement}
                         >
-                            {statusChangeObj.accept}
+                            {isStatusUpdating ? 'Saving...' : statusChangeObj.accept}
                         </button>
                     </div>
+                    {statusUpdateError && (
+                        <p className="al-mutation-error" role="alert">
+                            {statusUpdateError}
+                        </p>
+                    )}
                 </div>
                 <dialog 
                     ref={advanceEditDialogRef}
                     className="al-advance-edit-menu"
-                    onClose={() => setEditTarget(null)}
-                    closedby='any'
+                    aria-labelledby="al-advance-edit-title"
+                    aria-busy={isEditSaving}
+                    onClose={handleAdvanceEditClosed}
+                    onCancel={handleAdvanceEditCancel}
+                    closedby={isEditSaving ? 'none' : 'any'}
                 >
                     <div className="al-advance-edit-header">
                         <div className="al-advance-edit-cover">
@@ -285,7 +643,7 @@ function AnimeListPage() {
                         </div>
                         <div className="al-advance-edit-header-info">
                             <span>Edit Anime Entry</span>
-                            <h2>{editTarget?.title ?? ''}</h2>
+                            <h2 id="al-advance-edit-title">{editTarget?.title ?? ''}</h2>
                             <div className="al-advance-edit-header-sub-info">
                                 <span>{editTarget?.format ?? ''}</span>
                                 <span>
@@ -296,7 +654,11 @@ function AnimeListPage() {
                                 </span>
                             </div>
                         </div>
-                        <button onClick={handleCloseAdvanceEdit}>
+                        <button
+                            aria-label="Close edit dialog"
+                            disabled={isEditSaving}
+                            onClick={handleCloseAdvanceEdit}
+                        >
                             &times;
                         </button>
                     </div>
@@ -311,6 +673,7 @@ function AnimeListPage() {
                             <select 
                                 name="status" 
                                 value={editDraft?.status ?? ''}
+                                disabled={isEditSaving}
                                 onChange={handleEditFieldChange}
                             >
                                 <option value="watching">Watching</option>
@@ -325,6 +688,7 @@ function AnimeListPage() {
                             <select 
                                 name="rating" 
                                 value={editDraft?.rating ?? ''}
+                                disabled={isEditSaving}
                                 onChange={handleEditFieldChange}
                             >
                                 <option value="">-</option>
@@ -339,7 +703,7 @@ function AnimeListPage() {
                         <label className="al-edit-field" id='al-edit-progress'>
                             <span>Progress</span>
 
-                            <div className="al-edit-progress-input">
+                            <span className="al-edit-progress-input">
                                 <input
                                     type="number"
                                     name="progress"
@@ -348,6 +712,7 @@ function AnimeListPage() {
                                     step="1"
                                     required
                                     value={editDraft?.progress ?? ''}
+                                    disabled={isEditSaving}
                                     onChange={handleEditFieldChange}
                                     />
 
@@ -358,31 +723,92 @@ function AnimeListPage() {
                                         : '? episodes'
                                     }
                                 </span>
-                            </div>
+                            </span>
                         </label>
-                        <label className="al-edit-field" id='al-edit-start-date'>
-                            <span>Start date</span>
-                            <input
-                                type="date"
-                                name="startedAt"
-                                onChange={handleEditFieldChange}
-                                onClick={(event) => event.currentTarget.showPicker()}
+                        <div className="al-edit-field" id='al-edit-start-date'>
+                            <label htmlFor="al-edit-start-date-input">Start date</label>
+                            <span className="al-edit-date-control">
+                                <input
+                                    id="al-edit-start-date-input"
+                                    type="date"
+                                    value={editDraft?.startedAt ?? ''}
+                                    name="startedAt"
+                                    disabled={isEditSaving}
+                                    onChange={handleEditFieldChange}
+                                    onClick={(event) => event.currentTarget.showPicker()}
                                 />
-                        </label>
-                        <label className="al-edit-field" id='al-edit-end-date'>
-                            <span>End date</span>
-                            <input
-                                type="date"
-                                name="completedAt"
-                                onChange={handleEditFieldChange}
-                                onClick={(event) => event.currentTarget.showPicker()}
+                                <button
+                                    type="button"
+                                    disabled={
+                                        isEditSaving ||
+                                        (!editDraft?.startedAt && !hasFuzzyDateValue(editTarget?.startedAt))
+                                    }
+                                    onClick={() => handleClearEditDate('startedAt')}
+                                >
+                                    Clear
+                                </button>
+                            </span>
+                            {!fuzzyDateToInputValue(editTarget?.startedAt) &&
+                                hasFuzzyDateValue(editTarget?.startedAt) &&
+                                !editDirtyFields.has('startedAt') && (
+                                    <small>
+                                        Partial AniList date: {formatFuzzyDate(editTarget.startedAt)}
+                                    </small>
+                                )}
+                        </div>
+                        <div className="al-edit-field" id='al-edit-end-date'>
+                            <label htmlFor="al-edit-end-date-input">End date</label>
+                            <span className="al-edit-date-control">
+                                <input
+                                    id="al-edit-end-date-input"
+                                    type="date"
+                                    value={editDraft?.completedAt ?? ''}
+                                    name="completedAt"
+                                    disabled={isEditSaving}
+                                    onChange={handleEditFieldChange}
+                                    onClick={(event) => event.currentTarget.showPicker()}
                                 />
-                        </label>
+                                <button
+                                    type="button"
+                                    disabled={
+                                        isEditSaving ||
+                                        (!editDraft?.completedAt && !hasFuzzyDateValue(editTarget?.completedAt))
+                                    }
+                                    onClick={() => handleClearEditDate('completedAt')}
+                                >
+                                    Clear
+                                </button>
+                            </span>
+                            {!fuzzyDateToInputValue(editTarget?.completedAt) &&
+                                hasFuzzyDateValue(editTarget?.completedAt) &&
+                                !editDirtyFields.has('completedAt') && (
+                                    <small>
+                                        Partial AniList date: {formatFuzzyDate(editTarget.completedAt)}
+                                    </small>
+                                )}
+                        </div>
                     </form>
                     <div className="al-advance-edit-separator"></div>
                     <div className="al-advance-edit-options">
-                        <button type="button" onClick={handleCloseAdvanceEdit}>Cancel</button>
-                        <button type='submit' form='al-advance-edit-form'>Save changes</button>
+                        {editSaveError && (
+                            <p className="al-mutation-error" role="alert">
+                                {editSaveError}
+                            </p>
+                        )}
+                        <button
+                            type="button"
+                            disabled={isEditSaving}
+                            onClick={handleCloseAdvanceEdit}
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type='submit'
+                            form='al-advance-edit-form'
+                            disabled={!hasEditChanges || isEditSaving}
+                        >
+                            {isEditSaving ? 'Saving...' : 'Save changes'}
+                        </button>
                     </div>
                 </dialog>
             </section>

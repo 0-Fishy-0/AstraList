@@ -1,6 +1,6 @@
 # AstraList Plans / Next Steps
 
-Updated: 2026-09-01
+Updated: 2026-09-12
 
 # Immediate product focus
 
@@ -151,14 +151,16 @@ Then implement backend AniList functionality:
 
 ## 6. List mutations
 
-After read-only list rendering works:
+Working:
 
 - progress mutation,
 - status mutation,
 - score mutation,
 - dates/details edit.
 
-Need to decide whether AstraList writes directly to AniList as source-of-truth, mirrors additional fields locally, or combines the two. Do not over-design this before the first mutation is implemented.
+Current decision: AniList is the source of truth. AstraList sends partial updates through one protected backend endpoint and updates React only from AniList-confirmed responses.
+
+The advanced editor sends one mutation only when Save is clicked. All other dismissal paths discard the local draft without changing AniList.
 
 ---
 
@@ -293,16 +295,10 @@ popover open/close animation
 /list/anime route shell
 
 NOW
-Anime List design
+Anime List mutation verification and polish
 
 NEXT
-static row component
-local progress/rating/edit interactions
-protected list route behavior
-AnimeList data contract
-AniList list fetch endpoint
-real list rendering
-mutations
+decide the next Anime List feature after mutation behavior is manually exercised
 
 LATER
 Lists active indicator cleanup

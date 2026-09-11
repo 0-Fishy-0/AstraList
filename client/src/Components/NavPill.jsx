@@ -2,10 +2,15 @@ import './Styles/NavPill.css';
 import AstraMini from './AstraMini.jsx';
 import { NavLink } from 'react-router';
 import { AuthContext } from '../App.jsx';
-import { useContext } from 'react';
+import { useContext, useRef } from 'react';
 
 function NavPill() {
     const { user } = useContext(AuthContext);
+    const submenuRef = useRef(null);
+
+    function closeSubmenu() {
+        submenuRef.current?.hidePopover();
+    }
 
     return (
         <main>
@@ -35,7 +40,7 @@ function NavPill() {
                 </li>
             </ul>
         </nav>
-        <nav className='nav-submenu'
+        <nav ref={submenuRef} className='nav-submenu'
             id='nav-submenu-popup' 
             popover='auto'
             autoFocus
@@ -45,6 +50,7 @@ function NavPill() {
                     <NavLink
                         to={user ? '/list/anime' : '/'}
                         className={({ isActive }) => `nav-submenu-link ${isActive ? 'active' : ''}`}
+                        onClick={closeSubmenu}
                     >
                         <span>Anime</span>
                     </NavLink>
@@ -53,6 +59,7 @@ function NavPill() {
                     <NavLink
                         to={user ? '/list/games' : '/'}
                         className={({ isActive }) => `nav-submenu-link ${isActive ? 'active' : ''}`}
+                        onClick={closeSubmenu}
                     >
                         <span>Games</span>
                     </NavLink>
@@ -61,6 +68,7 @@ function NavPill() {
                     <NavLink
                         to={user ? '/list/movies' : '/'}
                         className={({ isActive }) => `nav-submenu-link ${isActive ? 'active' : ''}`}
+                        onClick={closeSubmenu}
                     >
                         <span>Movies & TV</span>
                     </NavLink>

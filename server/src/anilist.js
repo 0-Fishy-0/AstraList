@@ -75,6 +75,42 @@ const ANIME_LIST_QUERY = `
         }
     }
 `;
+const UPDATE_ANIME_ENTRY_MUTATION = `
+    mutation UpdateAnimeEntry(
+        $entryId: Int!
+        $status: MediaListStatus
+        $scoreRaw: Int
+        $progress: Int
+        $startedAt: FuzzyDateInput
+        $completedAt: FuzzyDateInput
+    ) {
+        SaveMediaListEntry(
+            id: $entryId
+            status: $status
+            scoreRaw: $scoreRaw
+            progress: $progress
+            startedAt: $startedAt
+            completedAt: $completedAt
+        ) {
+            id
+            status
+            score(format: POINT_10)
+            progress
+
+            startedAt {
+                year
+                month
+                day
+            }
+
+            completedAt {
+                year
+                month
+                day
+            }
+        }
+    }
+`;
 
 const ANILIST_STATUS_MAP = {
     CURRENT: 'watching',
@@ -83,6 +119,13 @@ const ANILIST_STATUS_MAP = {
     DROPPED: 'dropped',
     PLANNING: 'planning',
     REPEATING: 'watching'
+};
+const ASTRALIST_STATUS_MAP = {
+    watching: 'CURRENT',
+    completed: 'COMPLETED',
+    'on-hold': 'PAUSED',
+    dropped: 'DROPPED',
+    planning: 'PLANNING'
 };
 
 export async function getAnimeList(userId, accessToken) {
@@ -116,4 +159,43 @@ export async function getAnimeList(userId, accessToken) {
             }))
         )
     );
+}
+
+export async function updateAnimeEntry(entryId, updates, accessToken) {
+    const variables = { entryId };
+
+    if (Object.hasOwn(updates, 'status')) {
+        variables.status = ASTRALIST_STATUS_MAP[updates.status];
+    }
+    if (Object.hasOwn(updates, 'rating')) {
+        variables.scoreRaw = updates.rating === null ? 0 : updates.rating * 10;
+    }
+    if (Object.hasOwn(updates, 'progress')) {
+        variables.progress = updates.progress;
+    }
+    if (Object.hasOwn(updates, 'startedAt')) {
+        variables.startedAt = updates.startedAt;
+    }
+    if (Object.hasOwn(updates, 'completedAt')) {
+        variables.completedAt = updates.completedAt;
+    }
+
+    const data = await requestAniList(
+        UPDATE_ANIME_ENTRY_MUTATION,
+        variables,
+        accessToken
+    );
+
+    const entry = data.SaveMediaListEntry;
+
+    if (!entry) return null;
+
+    return {
+        id: entry.id,
+        status: ANILIST_STATUS_MAP[entry.status],
+        rating: entry.score === 0 ? null : entry.score,
+        progress: entry.progress,
+        startedAt: entry.startedAt,
+        completedAt: entry.completedAt
+    };
 }

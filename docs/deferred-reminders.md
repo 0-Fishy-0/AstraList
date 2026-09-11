@@ -223,3 +223,31 @@ score
 ```
 
 Exact UI container for detailed editing is intentionally undecided.
+
+---
+
+# 13. Anime List toolbar controls
+
+The current `.al-toolbar-item` buttons displaying `T`, `E`, `M`, `P`, and
+`R` are temporary visual placeholders. Their behavior and final labels/icons
+have not been decided yet.
+
+When implementing the toolbar:
+
+- define the purpose of each control before wiring interactions,
+- replace placeholder letters with meaningful labels or icons,
+- provide accessible names for icon-only controls,
+- design clear active, hover, focus, and disabled states,
+- verify the toolbar still works on narrow screens.
+
+Do not assign arbitrary behavior merely to make the placeholder buttons
+functional. Their actions should be driven by the Anime List's actual sorting,
+filtering, and display needs.
+
+---
+
+# 14. AniList custom-list disclosure
+
+Add a short note near the AniList login option explaining that custom list
+groups are not imported and custom-only/hidden entries may be omitted. Decide
+the exact wording later.

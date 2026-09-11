@@ -63,19 +63,23 @@ function App() {
 
 			} catch (error) {
 				console.error("Error checking auth status:", error);
+				setUser(null);
+				setAuthStatus('error');
 			}
   		}
 		checkAuthStatus();
 	}, []);
 
     return (
-		<AuthContext.Provider value={{ user, setUser, authStatus }}>
+		<AuthContext.Provider value={{ user, setUser, authStatus, setAuthStatus }}>
 		<Routes>
 			<Route 
 				path="/"
 				element={
 					authStatus === 'loading'
 					? <LoadingPage text='Checking Authorization Status...' />
+					: authStatus === 'error'
+					? (<p>Insert Error Page here later</p>)
 					: authStatus === 'authenticated'
 					? <Navigate to={`/profile/${user.handle}`} replace />
 					: <LoginPage />
@@ -90,9 +94,9 @@ function App() {
 					element={
 						authStatus === 'loading'
 						? <LoadingPage text='Loading Anime List...' />
-						: authStatus === 'unauthenticated'
-						? <Navigate to="/" replace />
-						: <AnimeListPage />
+						: authStatus === 'authenticated'
+						? <AnimeListPage />
+						: <Navigate to="/" replace />
 					}
 				/>
 			</Route>

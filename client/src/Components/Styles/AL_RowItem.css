@@ -68,6 +68,7 @@
     flex-direction: column;
     gap: 0px;
     flex: 1;
+    min-width: 0;
 }
 
 .al-row-item-type {
@@ -78,6 +79,9 @@
     color: var(--text-primary);
     font-size: 0.9rem;
     font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .al-row-item-tags {
@@ -85,6 +89,9 @@
     display: flex;
     gap: var(--al-tag-gap);
     align-items: center;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
 
     & > *:not(:last-child)::after {
         content: '•';
@@ -92,18 +99,21 @@
     }
 }
 .al-row-item-tag {
-    color: var(--text-muted);
+    flex: none;
+    color: var(--text-secondary);
     font-size: 0.7rem;
 }
 
 .al-row-item-options {
-    flex: 1;
+    flex: 0 0 auto;
     display: flex;
-    gap: 5rem;
+    gap: clamp(0.75rem, 5vw, 5rem);
     align-items: center;
     justify-content: end;
 }
 .al-row-item-rating {
+    width: 3.5rem;
+    flex: none;
     display: grid;
     place-content: center;
     
@@ -124,19 +134,25 @@
             color: var(--accent-pink);
         }
 
-        &:hover {
+        &:hover:not(:disabled) {
             color: var(--accent-pink);
+        }
+        &:disabled {
+            cursor: wait;
+            opacity: 0.6;
         }
     }    
 }
 .al-row-item-progress {
+    width: 5.5rem;
+    flex: none;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 0.15rem;
 }
 .al-row-item-progress-label {
-    color: var(--text-muted);
+    color: var(--text-secondary);
     font-size: 0.7rem;
 }
 .al-row-item-progress-info {
@@ -180,6 +196,8 @@
     anchor-name: --status-prompt-anchor;
 }
 .al-row-item-edit {
+    width: 20px;
+    flex: none;
     border-radius: 50%;
 
     & > button {
@@ -194,8 +212,12 @@
         mask: url('/src/assets/edit-icon.svg') no-repeat center / contain;
         -webkit-mask: url('/src/assets/edit-icon.svg') no-repeat center / contain;
 
-        &:hover, &:focus-visible {
+        &:hover:not(:disabled), &:focus-visible:not(:disabled) {
             background-color: var(--accent);
+        }
+        &:disabled {
+            cursor: wait;
+            opacity: 0.5;
         }
     }
 }
@@ -214,6 +236,12 @@
     background-color: var(--bg-surface-2);
     border: 1px solid var(--border);
     border-radius: 16px;
+
+    & > .al-mutation-error {
+        max-width: 8rem;
+        padding: 0.5rem 0.5rem 0;
+        text-align: center;
+    }
 }
 .al-rating-choices {
     display: flex;
@@ -233,9 +261,13 @@
     height: 1.5rem;
     font-family: 'IBM Plex Sans', sans-serif;
 
-    &:hover,
-    &:focus-visible {
+    &:hover:not(:disabled),
+    &:focus-visible:not(:disabled) {
         color: var(--accent-pink);
+    }
+    &:disabled {
+        cursor: wait;
+        opacity: 0.5;
     }
 }
 
