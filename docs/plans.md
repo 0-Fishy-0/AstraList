@@ -1,166 +1,73 @@
 # AstraList Plans / Next Steps
 
-Updated: 2026-09-12
+Updated: 2026-09-14
 
 # Immediate product focus
 
-Design the actual `/list/anime` experience.
+Finish the Anime detail/list-management error experience, then choose between
+detail-page polish and one explicitly deferred navigation/accessibility item.
 
-The route shell and surrounding application infrastructure are already present, so the next work should finally target the core tracking product rather than more infrastructure refactors.
+The core `/list/anime` experience, AniList mutations, public AnimePage, and its
+add/change/remove control are working. Do not restart those completed design
+and data-contract phases.
 
 ---
 
 # Immediate sequence
 
-## 1. Finalize Anime List visual hierarchy
+## 1. Provider-failure UX on AnimePage
 
-Do not code the full feature until the row design feels right.
+The missing-list-entry bug is fixed: AniList's MediaList `404` now becomes
+`entry: null`, so a valid anime that is not on the viewer's list renders the
+unlisted control.
 
-Requirements already decided:
+Still to design and implement for genuine upstream failures:
 
-```text
-list/rows, not cards
-cover image left
-anime title
-2-3 tags
-progress x / y
-+ increment button
-user rating: - or 1..10
-small edit affordance
-```
+- distinguish an active request from a completed error in cursor/disabled styling,
+- provide a compact retry action or connection-problem prompt,
+- expose enough provider-error meaning to present the right recovery action,
+- avoid blind mutation retries because a request may have reached AniList before its response was lost.
 
-Design goal:
-
-- dense enough for quick scanning,
-- not as sterile as a raw table,
-- not as chunky as cards,
-- clearly AstraList.
-
-Previous mockups were rejected; start from the functional brief rather than polishing them further.
+Current mutation behavior already preserves the known entry on failed category
+changes and removals; keep that behavior during the error-UX pass.
 
 ---
 
-## 2. Build the static AnimeList row component
+## 2. Verify live AniList detail and mutation behavior
 
-Once the visual direction is approved, build a reusable row with placeholder data.
+Development fixtures intentionally bypass only anime-detail reads. With AniList
+stable and `USE_ANIME_FIXTURES=false`, verify:
 
-Do not immediately connect AniList.
-
-First prove:
-
-- layout,
-- responsive behavior,
-- hover/focus behavior,
-- progress/rating/edit controls visually fit.
+- public detail success/not-found/error behavior,
+- logged-in list lookup for listed and unlisted anime,
+- create, category update, and delete against real entries,
+- provider rate-limit/token-expiry responses remain errors rather than looking unlisted.
 
 ---
 
-## 3. Local interaction prototype
+## 3. AnimePage polish
 
-Before backend mutations, prototype the interactions locally:
+After live verification, choose the next concrete detail-page improvement:
 
-### Progress
+- dedicated not-found/error presentation instead of temporary placeholders,
+- replace or formalize the temporary banner/fixture artwork path,
+- review relation-tooltip behavior across browsers and narrow viewports,
+- decide whether list score/progress need any detail-page affordance or should remain list-page-only.
 
-```text
-x / y [+]
-```
-
-Click +:
-
-```text
-x -> x + 1
-```
-
-Boundary behaviors:
-
-```text
-if status = Planning and progress changes 0 -> 1
--> prompt: move to Watching?
-
-if status = Watching and progress reaches total
--> prompt: mark Completed?
-```
-
-Do not silently change status unless that product behavior is explicitly chosen.
-
-### Rating
-
-Current intended model:
-
-```text
--  = no rating
-1..10 = selected rating
-```
-
-Click should expose a compact choice rather than permanently occupying huge row space.
-
-### Edit
-
-Small edit action opens a more detailed entry editor containing at least:
-
-```text
-progress / episode count
-status
-start date
-end date
-score
-```
-
-Exact component type (popover/dialog/side panel) is not yet finalized.
+Do not add score/progress controls merely for feature parity; the detail page
+should stay focused.
 
 ---
 
-## 4. Define actual Anime data shape needed by the frontend
+## 4. Deferred option: navigation/accessibility
 
-Only after the UI is clear, decide what the backend must return.
+As an explicit alternative to more AnimePage polish, pick one postponed item
+from `deferred-reminders.md`:
 
-Likely information includes:
+- wire the Lists active indicator now that `/list/anime` exists, or
+- perform the whole NavPill keyboard/accessibility pass.
 
-```text
-media id
-title
-cover image
-genres/tags
-episode total
-current progress
-status
-user score
-start date
-end date
-possibly studio/year/format if the UI truly needs them
-```
-
-Do not fetch/display metadata merely because AniList exposes it.
-
-The UI should drive the data contract.
-
----
-
-## 5. AniList GraphQL/backend list data
-
-Then implement backend AniList functionality:
-
-1. GraphQL helper/service.
-2. Fetch authenticated user's media list collection.
-3. Normalize provider response into AstraList API response.
-4. Keep provider token backend-only.
-5. Add protected AstraList endpoint(s) consumed by AnimeListPage.
-6. Add loading/empty/error states.
-
----
-
-## 6. List mutations
-
-Working:
-
-- progress mutation,
-- status mutation,
-- score mutation,
-- dates/details edit.
-
-Current decision: AniList is the source of truth. AstraList sends partial updates through one protected backend endpoint and updates React only from AniList-confirmed responses.
-
-The advanced editor sends one mutation only when Save is clicked. All other dismissal paths discard the local draft without changing AniList.
+Do not mix both into an unrelated AnimePage task.
 
 ---
 
@@ -193,7 +100,7 @@ List pages are personal/private management pages.
 
 Unlike public profiles, valid `/list/*` routes should require authentication.
 
-Desired behavior:
+Current behavior:
 
 ```text
 user authenticated
@@ -211,13 +118,14 @@ Do not confuse this with `/api/me`, which remains optional viewer inspection.
 
 # Main Nav Lists-active behavior
 
-Postponed until list routes are in place.
+Available as a focused next task now that `/list/anime` exists, but still
+postponed until deliberately selected.
 
 Then use route location conceptually:
 
 ```js
 const location = useLocation();
-const isListRoute = location.pathname.startsWith('/list/');
+const isListRoute = validListPaths.includes(location.pathname);
 ```
 
 The single Lists button should appear active on:
@@ -234,7 +142,7 @@ Once this exists, revisit the main moving indicator so Lists can own the active 
 
 ---
 
-# Profile work after Anime core begins working
+# Profile work after Anime core
 
 Later:
 
@@ -293,14 +201,23 @@ NavPill
 native Lists popover
 popover open/close animation
 /list/anime route shell
+Anime List row design and responsive implementation
+Anime List fetching, search, categories, and empty/error states
+progress, status, rating, and advanced-editor mutations
+public /anime/:mediaId route and normalized detail API
+anime relations and attached hover/focus details
+AnimePage list lookup/create/category-change/remove control
+MediaList missing-entry 404 normalization
+independent danger tokens for destructive actions
 
 NOW
-Anime List mutation verification and polish
+design genuine provider-failure/retry UX for AnimePage list status
 
 NEXT
-decide the next Anime List feature after mutation behavior is manually exercised
+verify detail and list mutations with fixtures disabled when AniList is stable
 
 LATER
+AnimePage dedicated error/not-found polish
 Lists active indicator cleanup
 whole-nav keyboard accessibility pass
 Profile editing/settings

@@ -1,6 +1,6 @@
 # AstraList — Deferred Reminders / Postponed Work
 
-Updated: 2026-09-01
+Updated: 2026-09-14
 
 This file is specifically for things that were intentionally postponed so they do not get repeatedly rediscovered or forgotten.
 
@@ -8,9 +8,9 @@ This file is specifically for things that were intentionally postponed so they d
 
 # 1. Main Nav Lists-active indicator
 
-Do not keep fighting this before list route state exists.
-
-When `/list/anime`, `/list/games`, `/list/movies` are established, use `useLocation()` to detect `/list/*` and give the Lists item a real active state.
+`/list/anime` now exists, so this is available as a focused task when selected.
+Use `useLocation()` to detect valid `/list/*` routes and give the Lists item a
+real active state without treating arbitrary invalid paths as active.
 
 Then revisit the CSS Anchor Positioning indicator.
 
@@ -81,23 +81,7 @@ Do not refactor it merely because a cleaner import graph is theoretically possib
 
 ---
 
-# 5. Shared Nav layout variables
-
-Nav pill width is intended to be a shared layout concern, not duplicated magic numbers inside page-specific CSS.
-
-Current NavPill already uses something like:
-
-```css
-width: var(--nav-pill-width);
-```
-
-Verify the shared variable is defined at a common AppLayout/root scope and that page content offset uses the same variable.
-
-If this has already been completed, remove this reminder on the next cleanup pass.
-
----
-
-# 6. Session lifetime
+# 5. Session lifetime
 
 Current session expiry is roughly one hour.
 
@@ -114,7 +98,7 @@ Need to balance:
 
 ---
 
-# 7. OAuth/security hardening
+# 6. OAuth/security hardening
 
 Before production:
 
@@ -128,7 +112,7 @@ Before production:
 
 ---
 
-# 8. Profile data polish
+# 7. Profile data polish
 
 Current Profile page still has placeholder media content and incomplete data fields.
 
@@ -145,7 +129,7 @@ Later:
 
 ---
 
-# 9. Handle system follow-up
+# 8. Handle system follow-up
 
 Current desired canonical model:
 
@@ -164,7 +148,7 @@ Later UI work:
 
 ---
 
-# 10. Popover submenu details
+# 9. Popover submenu details
 
 Current simple translateX + opacity animation is considered final enough.
 
@@ -179,7 +163,7 @@ Simple clean behavior won.
 
 ---
 
-# 11. Advanced motion backlog
+# 10. Advanced motion backlog
 
 Still postponed:
 
@@ -193,40 +177,7 @@ Functionality comes first.
 
 ---
 
-# 12. Anime List behavior reminders
-
-When implementing progress:
-
-```text
-Planning, progress 0 -> press +
-=> offer switch to Watching
-
-Watching, progress becomes total
-=> offer switch to Completed
-```
-
-When implementing rating:
-
-```text
-- = unrated
-1..10 = rating
-```
-
-Detailed edit should later support:
-
-```text
-progress / episodes
-status
-start date
-end date
-score
-```
-
-Exact UI container for detailed editing is intentionally undecided.
-
----
-
-# 13. Anime List toolbar controls
+# 11. Anime List toolbar controls
 
 The current `.al-toolbar-item` buttons displaying `T`, `E`, `M`, `P`, and
 `R` are temporary visual placeholders. Their behavior and final labels/icons
@@ -246,8 +197,24 @@ filtering, and display needs.
 
 ---
 
-# 14. AniList custom-list disclosure
+# 12. AniList custom-list disclosure
 
 Add a short note near the AniList login option explaining that custom list
 groups are not imported and custom-only/hidden entries may be omitted. Decide
 the exact wording later.
+
+---
+
+# 13. AnimePage provider-failure UX
+
+The normal unlisted case is no longer an error: AniList MediaList `404` is
+normalized to `entry: null`.
+
+Genuine provider failures still need a deliberate UI pass:
+
+- show a waiting cursor only while a request is actually in flight,
+- show a clear connection/provider failure after the request ends,
+- offer a compact retry action,
+- keep the existing behavior that preserves known list state on failed mutations,
+- expose enough provider-error meaning to choose the correct recovery action,
+- do not blindly retry mutations whose upstream completion is ambiguous.

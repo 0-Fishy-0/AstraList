@@ -1,8 +1,16 @@
 import {
     requestAniList,
     getAnimeList,
+    getAnimeDetails,
+    getAnimeListEntry,
+    createAnimeEntry,
+    deleteAnimeEntry,
     updateAnimeEntry
 } from './anilist.js';
+import {
+    ANIME_FIXTURE_DELAY_MS,
+    getAnimeDetailsFixture
+} from './animeDetailsFixtures.js';
 import express from 'express';
 import cors from 'cors';
 import { randomUUID, randomInt } from 'node:crypto';
@@ -12,6 +20,9 @@ import { MongoClient, ReturnDocument } from 'mongodb';
 const app = express();
 const PORT = 3000;
 const mongoClient = new MongoClient(process.env.MONGODB_URI);
+const USE_ANIME_FIXTURES =
+    process.env.NODE_ENV !== 'production' &&
+    process.env.USE_ANIME_FIXTURES === 'true';
 let db;
 let usersCollection;
 let sessionsCollection;
@@ -419,6 +430,177 @@ app.get('/api/list/anime', requireAuth, async (req, res) => {
     }
 });
 
+app.get('/api/anime/:mediaId', async (req, res) => {
+    const mediaId = Number(req.params.mediaId);
+
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+        return res.status(400).json({
+            error: 'INVALID_ANIME_MEDIA_ID'
+        });
+    }
+
+    // =========================================================================
+    // ======================== DEVELOPMENT-ONLY SWITCH =========================
+    // =========================================================================
+    // This explicit branch replaces AniList ONLY for local anime-page work.
+    // Never turn it into an automatic outage fallback: production must report
+    // provider failures honestly rather than serving fake data to real users.
+    // Set USE_ANIME_FIXTURES=true locally to enter; set it to false to leave.
+    // NODE_ENV=production disables this branch regardless of the toggle value.
+    // =========================================================================
+    if (USE_ANIME_FIXTURES) {
+        await new Promise((resolve) => setTimeout(resolve, ANIME_FIXTURE_DELAY_MS));
+        const anime = getAnimeDetailsFixture(mediaId);
+
+        if (!anime) {
+            return res.status(404).json({
+                error: 'ANIME_NOT_FOUND'
+            });
+        }
+
+        return res.json({ anime });
+    }
+
+    try {
+        const anime = await getAnimeDetails(mediaId);
+
+        if (!anime) {
+            return res.status(404).json({
+                error: 'ANIME_NOT_FOUND'
+            });
+        }
+
+        res.json({ anime });
+    } catch (error) {
+        if (error.status === 404) {
+            return res.status(404).json({
+                error: 'ANIME_NOT_FOUND'
+            });
+        }
+
+        console.error('Failed to fetch AniList anime details:', error);
+
+        res.status(502).json({
+            error: 'ANILIST_ANIME_REQUEST_FAILED'
+        });
+    }
+});
+
+app.get('/api/list/anime/media/:mediaId', requireAuth, async (req, res) => {
+    const mediaId = Number(req.params.mediaId);
+
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+        return res.status(400).json({
+            error: 'INVALID_ANIME_MEDIA_ID'
+        });
+    }
+
+    const anilistAccount = req.user.accounts?.anime?.anilist;
+
+    if (!anilistAccount?.accessToken || !anilistAccount?.userId) {
+        return res.status(409).json({
+            error: 'ANILIST_NOT_CONNECTED'
+        });
+    }
+
+    try {
+        const entry = await getAnimeListEntry(
+            mediaId,
+            anilistAccount.userId,
+            anilistAccount.accessToken
+        );
+
+        res.json({ entry });
+    } catch (error) {
+        console.error('Failed to fetch AniList anime entry:', error);
+
+        res.status(502).json({
+            error: 'ANILIST_ENTRY_REQUEST_FAILED'
+        });
+    }
+});
+
+app.post('/api/list/anime', requireAuth, async (req, res) => {
+    const mediaId = req.body?.mediaId;
+    const status = req.body?.status;
+
+    if (!Number.isInteger(mediaId) || mediaId <= 0) {
+        return res.status(400).json({
+            error: 'INVALID_ANIME_MEDIA_ID'
+        });
+    }
+    if (!ANIME_STATUSES.has(status)) {
+        return res.status(400).json({
+            error: 'INVALID_ANIME_STATUS'
+        });
+    }
+
+    const anilistAccount = req.user.accounts?.anime?.anilist;
+
+    if (!anilistAccount?.accessToken || !anilistAccount?.userId) {
+        return res.status(409).json({
+            error: 'ANILIST_NOT_CONNECTED'
+        });
+    }
+
+    try {
+        const entry = await createAnimeEntry(
+            mediaId,
+            status,
+            anilistAccount.accessToken
+        );
+
+        if (!entry) {
+            throw new Error('AniList returned no created entry');
+        }
+
+        res.status(201).json({ entry });
+    } catch (error) {
+        console.error('Failed to create AniList anime entry:', error);
+
+        res.status(502).json({
+            error: 'ANILIST_ENTRY_CREATE_FAILED'
+        });
+    }
+});
+
+app.delete('/api/list/anime/:entryId', requireAuth, async (req, res) => {
+    const entryId = Number(req.params.entryId);
+
+    if (!Number.isInteger(entryId) || entryId <= 0) {
+        return res.status(400).json({
+            error: 'INVALID_ANIME_ENTRY_ID'
+        });
+    }
+
+    const anilistAccount = req.user.accounts?.anime?.anilist;
+
+    if (!anilistAccount?.accessToken || !anilistAccount?.userId) {
+        return res.status(409).json({
+            error: 'ANILIST_NOT_CONNECTED'
+        });
+    }
+
+    try {
+        const deleted = await deleteAnimeEntry(
+            entryId,
+            anilistAccount.accessToken
+        );
+
+        if (!deleted) {
+            throw new Error('AniList did not confirm entry deletion');
+        }
+
+        res.json({ deleted: true });
+    } catch (error) {
+        console.error('Failed to delete AniList anime entry:', error);
+
+        res.status(502).json({
+            error: 'ANILIST_ENTRY_DELETE_FAILED'
+        });
+    }
+});
+
 app.patch('/api/list/anime/:entryId', requireAuth, async (req, res) => {
     const entryId = Number(req.params.entryId);
 
@@ -533,6 +715,13 @@ app.patch('/api/list/anime/:entryId', requireAuth, async (req, res) => {
 async function startServer() {
     try {
         await connectToDatabase();
+
+        if (USE_ANIME_FIXTURES) {
+            console.warn(
+                'DEVELOPMENT ONLY: anime detail fixtures are enabled; AniList detail requests are bypassed.'
+            );
+        }
+
         app.listen(PORT, () => {
             console.log(`Server running on http://localhost:${PORT}`);
         });

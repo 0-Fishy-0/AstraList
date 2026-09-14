@@ -1,6 +1,6 @@
 # Authentication Flow — Current AstraList Notes
 
-Updated: 2026-09-01
+Updated: 2026-09-14
 
 # Why there is a backend
 
@@ -236,6 +236,33 @@ POST /auth/logout
 -> frontend sets user = null
 -> authStatus = unauthenticated
 ```
+
+---
+
+# Protected AnimePage list state
+
+`/anime/:mediaId` and its anime-detail API are public, but personal list state
+is viewer-specific.
+
+```text
+logged-out viewer
+-> render public anime details
+-> skip personal list lookup
+-> Add to list returns to /
+
+logged-in viewer
+-> browser sends astra_session to protected list endpoint
+-> Express resolves the persistent user and backend-only AniList token
+-> AniList MediaList lookup returns the viewer's entry or no entry
+```
+
+An AniList MediaList `404 Not Found` means the viewer has no matching personal
+entry. The provider helper normalizes that result to `null`; it is not an auth
+failure. A `401` from the protected AstraList endpoint still means the local
+session is invalid/expired and returns the frontend to unauthenticated state.
+
+Create, category-change, and removal mutations continue through Express so the
+raw provider token never reaches React.
 
 ---
 

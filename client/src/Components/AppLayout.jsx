@@ -4,13 +4,13 @@ import NavPill from "./NavPill";
 
 function AppLayout() {
     return (
-        <main className="app-layout">
+        <div className="app-layout">
             <NavPill />
 
             <div className="app-content">
                 <Outlet />
             </div>
-        </main>
+        </div>
     );
 }
 

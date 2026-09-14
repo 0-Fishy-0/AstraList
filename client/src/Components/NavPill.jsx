@@ -13,7 +13,7 @@ function NavPill() {
     }
 
     return (
-        <main>
+        <>
         <nav className="nav-pill-vert">
             <ul className="nav-pill-list">
                 <li className='nav-pill-item' id='nav-pill-brand'>
@@ -75,7 +75,7 @@ function NavPill() {
                 </li>
             </ul>
         </nav>
-        </main>
+        </>
     );
 }
 

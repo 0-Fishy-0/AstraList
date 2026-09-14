@@ -1,6 +1,6 @@
 # AstraList Design Context
 
-Updated: 2026-09-01
+Updated: 2026-09-14
 
 # General aesthetic
 
@@ -19,7 +19,13 @@ text muted     #7A6D91
 accent         #A87CF0
 accent hover   #BB95F5
 accent pink    #E67AB8
+danger         #E67AB8 (independent semantic token)
 ```
+
+`--danger` currently copies the existing theme-specific pink value rather than
+referencing `--accent-pink`. This is intentional: destructive UI can diverge
+from brand pink later without changing decorative accents. The derived
+`--danger-background` token provides the resting destructive surface.
 
 Fonts:
 
@@ -247,11 +253,9 @@ Use `@starting-style` and discrete `display`/`overlay` transitions for both entr
 
 ---
 
-# Anime List — current design brief
+# Anime List — current design
 
-Exact visual layout is still open.
-
-What is decided:
+The implemented direction is:
 
 - use a list/row treatment rather than cards,
 - image/cover on the left,
@@ -273,32 +277,30 @@ user rating (- or 1..10)
 small edit control
 ```
 
-The user referenced a dense MAL-style row/table example as inspiration, but did NOT approve simply reproducing that visual. The next design should use the reference for density/information hierarchy only and still feel like AstraList.
+The user referenced a dense MAL-style row/table example for information density,
+but the resulting design intentionally keeps AstraList's own atmospheric visual
+language rather than reproducing MAL.
 
-Progress UX ideas:
+Current interaction model:
 
 ```text
 Planning, x = 0
 + pressed
--> increment
 -> offer move to Watching
 
 Watching
 x reaches y
 -> offer move to Completed
+
+rating
+-> compact 1..10 / unrated popover
+
+edit
+-> modal dialog for progress, status, dates, and score
 ```
 
-Detailed edit surface later:
-
-```text
-progress / episode count
-status
-start date
-end date
-score
-```
-
-Do not lock the final Anime List design based on the previously rejected mockups.
+Status changes are prompted rather than silently applied. The advanced editor
+uses a local draft and writes to AniList only on explicit Save.
 
 ---
 
@@ -307,3 +309,27 @@ Do not lock the final Anime List design based on the previously rejected mockups
 Do not replace semantic links with buttons merely to make one browser's Tab preference include them.
 
 A later dedicated keyboard-navigation pass should decide the pill's complete keyboard model as one coherent component.
+
+---
+
+# Anime detail page
+
+Current direction:
+
+- keep the fading anime banner treatment behind the content; the current image remains a temporary local asset,
+- show the full banner at its natural aspect ratio rather than cropping it into a viewport-sized box,
+- build the page layout with nested flex containers,
+- keep the cover compact and the title/details left-aligned,
+- show Relations before Synopsis as a simple wrapping cover-card container,
+- reveal each relation's title and metadata in an attached hover/focus panel without shifting layout,
+- use one section heading per concept rather than paired eyebrow/heading synonyms.
+
+Current list-control direction:
+
+- keep the control directly below the title,
+- keep identical total dimensions before and after an entry is added,
+- unlisted state uses a translucent accent surface, not an opaque accent block,
+- current unlisted treatment uses a 30% accent background and 60% accent/border mix, increasing to 40% and 70% on hover,
+- listed state stays quieter with status and chevron grouped in the main segment,
+- removal uses a compact destructive segment and a small anchored confirmation rather than a central modal,
+- only destructive actions use `--danger`; decorative pink, focus rings, shared errors, and Cancel remain on their existing tokens.

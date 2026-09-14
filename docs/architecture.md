@@ -1,6 +1,6 @@
 # AstraList Architecture
 
-Updated: 2026-09-01
+Updated: 2026-09-14
 
 ## Project goal
 
@@ -51,7 +51,8 @@ App.jsx
         ├── NavPill
         └── Outlet
             ├── ProfilePage
-            └── AnimeListPage
+            ├── AnimeListPage
+            └── AnimePage
 ```
 
 `AppLayout` exists to hold persistent shared layout/navigation around routed pages.
@@ -97,7 +98,43 @@ Current route model:
 /
 /profile/:handle
 /list/anime
+/anime/:mediaId
 ```
+
+`/anime/:mediaId` is public and identifies anime by the AniList media ID, not a user's personal MediaList entry ID.
+
+Viewer-specific list state remains behind protected endpoints:
+
+```text
+GET  /api/list/anime/media/:mediaId -> look up an entry by anime ID
+POST /api/list/anime                -> create/upsert by anime ID
+PATCH /api/list/anime/:entryId      -> edit an existing list entry
+DELETE /api/list/anime/:entryId     -> remove an existing list entry
+```
+
+This keeps the public anime-detail response independent of the current viewer
+and preserves the `mediaId` versus MediaList entry `id` distinction.
+
+List-entry lookup semantics:
+
+```text
+anime details missing
+-> GET /api/anime/:mediaId returns 404
+
+anime exists but viewer has no MediaList entry
+-> AniList MediaList lookup reports 404
+-> provider helper normalizes that lookup result to null
+-> GET /api/list/anime/media/:mediaId returns 200 { entry: null }
+
+viewer has an entry
+-> return its MediaList entry id, status, rating, progress, and dates
+```
+
+The list-entry `id` returned by the lookup is subsequently used by PATCH and
+DELETE. Other provider failures are not normalized to `null`; Express returns
+the existing upstream-failure response.
+
+For local UI development during provider outages, the server may return normalized anime-detail fixtures when `USE_ANIME_FIXTURES=true`. This path is explicitly disabled under `NODE_ENV=production` and is never an automatic runtime fallback.
 
 Planned sibling routes:
 
@@ -289,8 +326,9 @@ Express currently owns or is expected to own:
 - `/api/me`,
 - logout,
 - public profile lookup,
-- future protected list APIs,
-- future AniList GraphQL proxy/service logic.
+- public normalized AniList anime-detail lookup,
+- protected Anime list lookup/create/update/delete APIs,
+- AniList GraphQL provider helpers and response normalization.
 
 Protected mutations/data routes should eventually use shared auth middleware rather than duplicating session validation.
 

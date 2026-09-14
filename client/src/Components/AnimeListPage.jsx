@@ -12,6 +12,28 @@ const CATEGORIES = [
     { key: 'dropped', label: 'Dropped' },
     { key: 'planning', label: 'Planning' }
 ]
+const SEARCH_DEBOUNCE_MS = 200;
+
+function doesTitleMatchSearch(title, query) {
+    const titleWords = title.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    const queryWords = query.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
+    let titleIndex = 0;
+
+    for (const [queryIndex, queryWord] of queryWords.entries()) {
+        const isFinalQueryWord = queryIndex === queryWords.length - 1;
+        const matchingIndex = titleWords.findIndex((titleWord, index) =>
+            index >= titleIndex &&
+            (isFinalQueryWord
+                ? titleWord.startsWith(queryWord)
+                : titleWord === queryWord)
+        );
+
+        if (matchingIndex === -1) return false;
+        titleIndex = matchingIndex + 1;
+    }
+
+    return true;
+}
 
 function fuzzyDateToInputValue(date) {
     if (!date?.year || !date.month || !date.day) return '';
@@ -74,6 +96,9 @@ function AnimeListPage() {
     const [listStatus, setListStatus] = useState('loading');
     const [activeCategory, setActiveCategory] = useState('all');
     const [canScrollCategoriesRight, setCanScrollCategoriesRight] = useState(false);
+    const [isSearchOpen, setIsSearchOpen] = useState(false);
+    const [searchInput, setSearchInput] = useState('');
+    const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
     const [ratingTargetId, setRatingTargetId] = useState(null);
     const [isRatingUpdating, setIsRatingUpdating] = useState(false);
     const [ratingUpdateError, setRatingUpdateError] = useState(null);
@@ -90,6 +115,8 @@ function AnimeListPage() {
     const statusPromptRef = useRef(null);
     const statusPromptCancelRef = useRef(null);
     const categoriesRef = useRef(null);
+    const searchInputRef = useRef(null);
+    const searchToggleRef = useRef(null);
     const [editTarget, setEditTarget] = useState(null);
     const [editDraft, setEditDraft] = useState(null);
     const [editDirtyFields, setEditDirtyFields] = useState(() => new Set());
@@ -97,11 +124,13 @@ function AnimeListPage() {
     const [editSaveError, setEditSaveError] = useState(null);
     const advanceEditDialogRef = useRef(null);
 
-    // Show only anime that matches the active category, or all if 'all' is selected
-    const visibleAnime = animeList.filter((anime) => 
+    const categoryAnime = animeList.filter((anime) =>
         activeCategory === 'all'
-        ? true 
-        : anime.status === activeCategory
+            ? true
+            : anime.status === activeCategory
+    );
+    const visibleAnime = categoryAnime.filter((anime) =>
+        doesTitleMatchSearch(anime.title, debouncedSearchQuery)
     );
     const editUpdates = buildAnimeEntryUpdates(editTarget, editDraft, editDirtyFields);
     const hasEditChanges = Object.keys(editUpdates).length > 0;
@@ -112,6 +141,22 @@ function AnimeListPage() {
         isStatusUpdating ||
         isEditSaving ||
         statusChangeObj.animeId !== null;
+
+    function closeSearch() {
+        setIsSearchOpen(false);
+        setSearchInput('');
+        setDebouncedSearchQuery('');
+    }
+
+    function handleSearchToggle() {
+        if (isSearchOpen) {
+            closeSearch();
+            return;
+        }
+
+        setIsSearchOpen(true);
+        requestAnimationFrame(() => searchInputRef.current?.focus());
+    }
 
     async function requestAnimeEntryUpdate(entryId, updates) {
         const response = await fetch(
@@ -411,6 +456,30 @@ function AnimeListPage() {
     }
 
     useEffect(() => {
+        const timeoutId = window.setTimeout(() => {
+            setDebouncedSearchQuery(searchInput);
+        }, SEARCH_DEBOUNCE_MS);
+
+        return () => window.clearTimeout(timeoutId);
+    }, [searchInput]);
+
+    useEffect(() => {
+        if (!isSearchOpen) return;
+
+        function handleSearchEscape(event) {
+            if (event.key !== 'Escape') return;
+
+            setIsSearchOpen(false);
+            setSearchInput('');
+            setDebouncedSearchQuery('');
+            requestAnimationFrame(() => searchToggleRef.current?.focus());
+        }
+
+        document.addEventListener('keydown', handleSearchEscape);
+        return () => document.removeEventListener('keydown', handleSearchEscape);
+    }, [isSearchOpen]);
+
+    useEffect(() => {
         async function fetchAnimeList() {
             try {
                 const response = await fetch(
@@ -515,8 +584,33 @@ function AnimeListPage() {
                                 </span>
                             )}
                         </div>
-                        <div className="al-search">
-                            <img src="/src/assets/search-icon.svg" alt="Search" />
+                        <div
+                            className="al-search"
+                            data-open={isSearchOpen}
+                            role="search"
+                        >
+                            <input
+                                ref={searchInputRef}
+                                id="al-anime-search"
+                                type="search"
+                                value={searchInput}
+                                placeholder="Search current category"
+                                autoComplete="off"
+                                spellCheck="false"
+                                disabled={!isSearchOpen}
+                                aria-label="Search anime in the current category"
+                                onChange={(event) => setSearchInput(event.target.value)}
+                            />
+                            <button
+                                ref={searchToggleRef}
+                                type="button"
+                                aria-controls="al-anime-search"
+                                aria-expanded={isSearchOpen}
+                                aria-label={isSearchOpen ? 'Close anime search' : 'Open anime search'}
+                                onClick={handleSearchToggle}
+                            >
+                                <img src="/src/assets/search-icon.svg" alt="" />
+                            </button>
                         </div>
                 </section>
                 <section className="al-toolbar">
@@ -536,9 +630,13 @@ function AnimeListPage() {
                         <p className="al-list-state">
                             Your anime list is empty.
                         </p>
-                    ) : visibleAnime.length === 0 ? (
+                    ) : categoryAnime.length === 0 ? (
                         <p className="al-list-state">
                             No anime in this category.
+                        </p>
+                    ) : visibleAnime.length === 0 ? (
+                        <p className="al-list-state" role="status">
+                            No anime match &ldquo;{debouncedSearchQuery.trim()}&rdquo;.
                         </p>
                     ) : (
                         visibleAnime.map((anime) => (

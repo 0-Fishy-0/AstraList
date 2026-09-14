@@ -24,6 +24,8 @@
     --accent: #8A4FD1;
     --accent-hover: #7238B8;
     --accent-pink: #D6559E;
+    --danger: #D6559E;
+    --danger-background: color-mix(in srgb, var(--danger) 12%, var(--bg-surface-2));
 }
 
 [data-theme="dark"] {
@@ -37,6 +39,8 @@
     --accent: #A87CF0;
     --accent-hover: #BB95F5;
     --accent-pink: #E67AB8;
+    --danger: #E67AB8;
+    --danger-background: color-mix(in srgb, var(--danger) 12%, var(--bg-surface-2));
 }
 
 html {

@@ -1,4 +1,5 @@
 import './Styles/AL_RowItem.css';
+import { Link } from 'react-router';
 
 function AL_RowItem({ 
     anime,
@@ -16,7 +17,11 @@ function AL_RowItem({
 
     return (
         <div className="al-row-item" data-status={anime.status}>
-            <div className="al-row-item-photo">
+            <Link
+                className="al-row-item-photo"
+                to={`/anime/${anime.mediaId}`}
+                aria-label={`View details for ${anime.title}`}
+            >
                 {anime.coverImage && (
                     <img 
                         src={anime.coverImage} 
@@ -26,9 +31,14 @@ function AL_RowItem({
                         onError={event => event.currentTarget.hidden = true}    
                     />
                 )}
-            </div>
+            </Link>
             <div className="al-row-item-info">
-                <div className="al-row-item-title">{anime.title}</div>
+                <Link
+                    className="al-row-item-title"
+                    to={`/anime/${anime.mediaId}`}
+                >
+                    {anime.title}
+                </Link>
                 <div className="al-row-item-tags">
                     {anime.tags.slice(0, 3).map((tag) => (
                         <span 

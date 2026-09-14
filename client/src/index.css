@@ -1,5 +1,2 @@
 @import './tokens.css';
 
-html {
-    scrollbar-gutter: stable;
-}

@@ -1,6 +1,6 @@
 # AstraList — Current State
 
-Updated: 2026-09-12
+Updated: 2026-09-14
 
 This file is the "what actually exists now" snapshot.
 
@@ -104,6 +104,7 @@ Current routed children include:
 ```text
 /profile/:handle
 /list/anime
+/anime/:mediaId
 ```
 
 ---
@@ -364,6 +365,7 @@ Working:
 - normalized row data with real covers and metadata,
 - loading, error, empty-list, and empty-category states,
 - category filtering,
+- debounced ordered title search with final-word prefix matching within the active category,
 - responsive row/category behavior,
 - progress, rating, status-prompt, and advanced-editor mutations.
 
@@ -378,6 +380,28 @@ Protected mutation endpoint:
 ```text
 PATCH /api/list/anime/:entryId
 ```
+
+Anime detail list-state endpoints:
+
+```text
+GET  /api/list/anime/media/:mediaId
+POST /api/list/anime
+DELETE /api/list/anime/:entryId
+```
+
+The GET endpoint returns the authenticated viewer's normalized entry or `null`.
+The POST endpoint creates/upserts an entry from `{ mediaId, status }`; later
+category changes continue through the entry-ID PATCH endpoint. DELETE removes
+an existing entry only after AniList confirms the deletion.
+
+AniList reports a missing `MediaList` entry as a GraphQL `404 Not Found`.
+`getAnimeListEntry()` translates that specific lookup result to `null`; it is
+not treated as an upstream failure and does not affect anime-detail 404s.
+Connection, authentication, rate-limit, and unexpected provider errors still
+propagate to the route error path.
+
+Provider helper coverage currently includes entry lookup/normalization,
+missing-entry `null` behavior for both response shapes, creation, and deletion.
 
 Supported partial fields:
 
@@ -412,3 +436,50 @@ Cancel / Escape / outside click / close -> discard draft, no mutation
 The dialog remains open on failed saves and blocks dismissal only while a requested save is in flight.
 
 AniList fuzzy dates are preserved when untouched. Complete dates can be edited with native date inputs, while partial dates are shown as provider hints and can be explicitly cleared.
+
+---
+
+# `/anime/:mediaId`
+
+A public anime-detail route shell exists under the shared AppLayout.
+
+Working:
+
+- list-row covers and titles link using the anime `mediaId`,
+- the route and `GET /api/anime/:mediaId` do not require authentication,
+- the existing LoadingPage is shown while anime details are fetched,
+- temporary not-found and error states are present pending dedicated pages,
+- core details include banner, cover, title, synopsis, genres, format, total episodes, airing status, and main studio,
+- anime relations include their provider relation type and link recursively to their own detail routes,
+- the full banner keeps its natural aspect ratio and fades behind overlapping page content,
+- Relations uses a simple wrapping cover-card container before Synopsis,
+- relation cards reveal an attached high-layer title/metadata panel on hover or keyboard focus,
+- the list control sits below the title and reads the viewer's entry by anime `mediaId`,
+- logged-out Add to list clicks return to `/`,
+- authenticated Add to list defaults to Planning, while its adjacent rotated `>` opens direct category choices,
+- after creation, the control displays the current category and acts as one category-menu trigger,
+- listed entries expose a compact remove segment with an anchored Cancel / Remove confirmation,
+- unlisted and listed controls preserve the same total width and segment proportions,
+- the unlisted control uses a stronger translucent accent wash rather than an opaque accent block,
+- destructive controls use independent global `--danger` and `--danger-background` tokens rather than borrowing the brand-pink token directly,
+- list popovers explicitly hide overflow to avoid Firefox painting a transient scrollbar during dismissal,
+- non-anime relations are omitted until AstraList has routes for those media types.
+
+The detail-page control handles category creation, category changes, and
+confirmed removal. Score, progress, and date editing remain list-page concerns.
+
+Development-only anime detail fixtures can be enabled in `server/.env`:
+
+```text
+USE_ANIME_FIXTURES=true
+```
+
+Fixture mode:
+
+- is forcibly disabled when `NODE_ENV=production`,
+- replaces only the anime-detail provider request,
+- preserves the real normalized API response shape,
+- adds a 500ms delay so LoadingPage can be inspected,
+- provides linked Bleach records for media IDs `269`, `116674`, `159322`, `1686`, `2889`, `4835`, and `8247`,
+- returns `404 ANIME_NOT_FOUND` for unknown IDs,
+- must never become an automatic provider-outage fallback.

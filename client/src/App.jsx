@@ -5,6 +5,7 @@ import { useState, useEffect, createContext } from "react"
 import { Routes, Route, Navigate } from 'react-router'
 import AppLayout from './Components/AppLayout.jsx'
 import AnimeListPage from './Components/AnimeListPage.jsx'
+import AnimePage from './Components/AnimePage.jsx'
 
 export const AuthContext = createContext(null);
 function App() {
@@ -98,6 +99,10 @@ function App() {
 						? <AnimeListPage />
 						: <Navigate to="/" replace />
 					}
+				/>
+				<Route
+					path="/anime/:mediaId"
+					element={<AnimePage />}
 				/>
 			</Route>
 		</Routes>
